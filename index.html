@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -44,16 +45,33 @@
 
   <style>
     /* Scrollbar styling */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: #1a1a2e; }
-    ::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 2px; }
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1a1a2e;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #0f3460;
+      border-radius: 2px;
+    }
 
     /* Prevent pull-to-refresh */
-    body { overscroll-behavior-y: contain; }
+    body {
+      overscroll-behavior-y: contain;
+    }
 
     /* Hide views by default */
-    .view { display: none; }
-    .view.active { display: flex; flex-direction: column; }
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: flex;
+      flex-direction: column;
+    }
 
     /* Modal backdrop */
     .modal-backdrop {
@@ -62,7 +80,9 @@
     }
 
     /* Bottom nav safe area */
-    .bottom-nav { padding-bottom: env(safe-area-inset-bottom, 0px); }
+    .bottom-nav {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
 
     /* Input date styling for dark theme */
     input[type="date"]::-webkit-calendar-picker-indicator {
@@ -93,10 +113,12 @@
 
       <!-- Sub-tabs: Autoservicio / Atendida -->
       <div id="inventory-tabs" class="flex bg-surface sticky top-0 z-20 border-b border-accent/30">
-        <button data-section="autoservicio" class="inventory-tab flex-1 py-3 text-sm font-semibold text-center transition-colors border-b-2 border-action text-action">
+        <button data-section="autoservicio"
+          class="inventory-tab flex-1 py-3 text-sm font-semibold text-center transition-colors border-b-2 border-action text-action">
           AUTOSERVICIO
         </button>
-        <button data-section="atendida" class="inventory-tab flex-1 py-3 text-sm font-semibold text-center transition-colors border-b-2 border-transparent text-text-secondary">
+        <button data-section="atendida"
+          class="inventory-tab flex-1 py-3 text-sm font-semibold text-center transition-colors border-b-2 border-transparent text-text-secondary">
           ATENDIDA
         </button>
       </div>
@@ -104,30 +126,32 @@
       <!-- Search / Filter Bar -->
       <div class="px-4 pt-3 pb-2">
         <div class="relative">
-          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" fill="none"
+            stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <input
-            id="inventory-search"
-            type="search"
-            placeholder="Buscar producto, PLU o código..."
-            class="w-full bg-surface-light rounded-lg pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-action/50"
-          >
+          <input id="inventory-search" type="search" placeholder="Buscar producto, PLU o código..."
+            class="w-full bg-surface-light rounded-lg pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-action/50">
         </div>
       </div>
 
       <!-- Sort / Filter chips -->
       <div id="inventory-filters" class="px-4 pb-2 flex gap-2 overflow-x-auto">
-        <button data-sort="date" class="sort-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-action/20 text-action border border-action/30">
+        <button data-sort="date"
+          class="sort-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-action/20 text-action border border-action/30">
           Por vencimiento
         </button>
-        <button data-sort="name" class="sort-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-surface-light text-text-secondary border border-transparent">
+        <button data-sort="name"
+          class="sort-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-surface-light text-text-secondary border border-transparent">
           Por nombre
         </button>
-        <button data-filter="expired" class="filter-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-surface-light text-text-secondary border border-transparent">
+        <button data-filter="expired"
+          class="filter-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-surface-light text-text-secondary border border-transparent">
           Vencidos
         </button>
-        <button data-filter="today" class="filter-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-surface-light text-text-secondary border border-transparent">
+        <button data-filter="today"
+          class="filter-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-surface-light text-text-secondary border border-transparent">
           Hoy
         </button>
       </div>
@@ -158,20 +182,19 @@
       <!-- Empty state -->
       <div id="inventory-empty" class="hidden flex-col items-center justify-center py-16 px-8 text-center">
         <svg class="w-16 h-16 text-text-secondary/30 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
         </svg>
         <p class="text-text-secondary text-sm">No hay productos en esta sección</p>
         <p class="text-text-secondary/60 text-xs mt-1">Toca el botón + para agregar</p>
       </div>
 
       <!-- FAB: Add Product -->
-      <button
-        id="fab-add-product"
+      <button id="fab-add-product"
         class="fixed bottom-24 right-5 z-20 w-14 h-14 bg-action hover:bg-action-hover rounded-full shadow-lg shadow-action/30 flex items-center justify-center transition-transform active:scale-90"
-        aria-label="Agregar producto"
-      >
+        aria-label="Agregar producto">
         <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
         </svg>
       </button>
     </section>
@@ -184,9 +207,10 @@
         <!-- Title -->
         <div class="flex items-center justify-between mb-6">
           <h2 id="add-product-title" class="text-lg font-bold">Agregar Producto</h2>
-          <button id="btn-cancel-product" class="text-text-secondary hover:text-white transition-colors p-1" aria-label="Cancelar">
+          <button id="btn-cancel-product" class="text-text-secondary hover:text-white transition-colors p-1"
+            aria-label="Cancelar">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
@@ -194,37 +218,26 @@
         <form id="product-form" class="space-y-5" novalidate>
           <!-- Nombre del producto -->
           <div>
-            <label for="product-name" class="block text-sm font-medium text-text-secondary mb-1.5">Nombre del producto</label>
-            <input
-              id="product-name"
-              type="text"
-              required
-              autocomplete="off"
-              placeholder="Ej: Milanesa de pollo"
-              class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20"
-            >
+            <label for="product-name" class="block text-sm font-medium text-text-secondary mb-1.5">Nombre del
+              producto</label>
+            <input id="product-name" type="text" required autocomplete="off" placeholder="Ej: Milanesa de pollo"
+              class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20">
           </div>
 
           <!-- PLU / Código de Barras + Scanner -->
           <div>
-            <label for="product-code" class="block text-sm font-medium text-text-secondary mb-1.5">PLU / Código de Barras</label>
+            <label for="product-code" class="block text-sm font-medium text-text-secondary mb-1.5">PLU / Código de
+              Barras</label>
             <div class="flex gap-2">
-              <input
-                id="product-code"
-                type="text"
-                inputmode="numeric"
-                autocomplete="off"
+              <input id="product-code" type="text" inputmode="numeric" autocomplete="off"
                 placeholder="Ej: 4011 o 7790001"
-                class="flex-1 bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20"
-              >
-              <button
-                id="btn-open-scanner"
-                type="button"
+                class="flex-1 bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20">
+              <button id="btn-open-scanner" type="button"
                 class="bg-accent hover:bg-accent/80 rounded-lg px-4 flex items-center justify-center transition-colors"
-                aria-label="Escanear código de barras"
-              >
+                aria-label="Escanear código de barras">
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                 </svg>
               </button>
             </div>
@@ -232,22 +245,17 @@
 
           <!-- Fecha de Vencimiento -->
           <div>
-            <label for="product-expiry" class="block text-sm font-medium text-text-secondary mb-1.5">Fecha de Vencimiento</label>
-            <input
-              id="product-expiry"
-              type="date"
-              required
-              class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20"
-            >
+            <label for="product-expiry" class="block text-sm font-medium text-text-secondary mb-1.5">Fecha de
+              Vencimiento</label>
+            <input id="product-expiry" type="date" required
+              class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20">
           </div>
 
           <!-- Sección -->
           <div>
             <label for="product-section" class="block text-sm font-medium text-text-secondary mb-1.5">Sección</label>
-            <select
-              id="product-section"
-              class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20 appearance-none"
-            >
+            <select id="product-section"
+              class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20 appearance-none">
               <option value="autoservicio">Autoservicio</option>
               <option value="atendida">Atendida</option>
             </select>
@@ -255,56 +263,62 @@
 
           <!-- Tipo de Medida -->
           <div>
-            <label for="product-measure" class="block text-sm font-medium text-text-secondary mb-1.5">Tipo de Medida</label>
+            <label for="product-measure" class="block text-sm font-medium text-text-secondary mb-1.5">Tipo de
+              Medida</label>
             <div id="product-measure" class="flex gap-3">
               <label class="flex-1">
                 <input type="radio" name="measure" value="unidades" class="sr-only peer" checked>
-                <div class="peer-checked:bg-action/20 peer-checked:border-action peer-checked:text-action bg-surface-light border border-accent/20 rounded-lg py-3 text-center text-sm font-medium cursor-pointer transition-colors">
+                <div
+                  class="peer-checked:bg-action/20 peer-checked:border-action peer-checked:text-action bg-surface-light border border-accent/20 rounded-lg py-3 text-center text-sm font-medium cursor-pointer transition-colors">
                   Unidades
                 </div>
               </label>
               <label class="flex-1">
                 <input type="radio" name="measure" value="kilogramos" class="sr-only peer">
-                <div class="peer-checked:bg-action/20 peer-checked:border-action peer-checked:text-action bg-surface-light border border-accent/20 rounded-lg py-3 text-center text-sm font-medium cursor-pointer transition-colors">
+                <div
+                  class="peer-checked:bg-action/20 peer-checked:border-action peer-checked:text-action bg-surface-light border border-accent/20 rounded-lg py-3 text-center text-sm font-medium cursor-pointer transition-colors">
                   Kilogramos
                 </div>
               </label>
             </div>
           </div>
 
+          <!-- Cantidad / Peso -->
+          <div>
+            <label for="product-quantity" class="block text-sm font-medium text-text-secondary mb-1.5">Cantidad / Peso</label>
+            <div class="relative">
+              <input
+                id="product-quantity"
+                type="number"
+                step="any"
+                min="0"
+                placeholder="Ej: 5 o 12.5"
+                class="w-full bg-surface-light rounded-lg pl-4 pr-14 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20"
+              >
+              <span id="product-quantity-unit" class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-text-secondary">Uds</span>
+            </div>
+          </div>
+
           <!-- Notas / Lote -->
           <div>
             <label for="product-notes" class="block text-sm font-medium text-text-secondary mb-1.5">Notas / Lote</label>
-            <textarea
-              id="product-notes"
-              rows="2"
-              placeholder="Ej: Lote ABC-123, proveedor X"
-              class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20 resize-none"
-            ></textarea>
+            <textarea id="product-notes" rows="2" placeholder="Ej: Lote ABC-123, proveedor X"
+              class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20 resize-none"></textarea>
           </div>
 
           <!-- Action Buttons -->
           <div class="flex gap-3 pt-2">
-            <button
-              id="btn-delete-product"
-              type="button"
-              class="hidden px-5 py-3 rounded-lg bg-exp-red/20 text-exp-red text-sm font-semibold border border-exp-red/30 hover:bg-exp-red/30 transition-colors"
-            >
+            <button id="btn-delete-product" type="button"
+              class="hidden px-5 py-3 rounded-lg bg-exp-red/20 text-exp-red text-sm font-semibold border border-exp-red/30 hover:bg-exp-red/30 transition-colors">
               Eliminar
             </button>
             <div class="flex-1"></div>
-            <button
-              id="btn-cancel-product-bottom"
-              type="button"
-              class="px-5 py-3 rounded-lg bg-surface-light text-text-secondary text-sm font-semibold hover:bg-surface transition-colors"
-            >
+            <button id="btn-cancel-product-bottom" type="button"
+              class="px-5 py-3 rounded-lg bg-surface-light text-text-secondary text-sm font-semibold hover:bg-surface transition-colors">
               Cancelar
             </button>
-            <button
-              id="btn-save-product"
-              type="submit"
-              class="px-6 py-3 rounded-lg bg-action hover:bg-action-hover text-white text-sm font-bold shadow-lg shadow-action/20 transition-colors active:scale-95"
-            >
+            <button id="btn-save-product" type="submit"
+              class="px-6 py-3 rounded-lg bg-action hover:bg-action-hover text-white text-sm font-bold shadow-lg shadow-action/20 transition-colors active:scale-95">
               Guardar
             </button>
           </div>
@@ -328,7 +342,8 @@
                 <p id="pedir-day-name" class="text-sm font-semibold">—</p>
                 <p id="pedir-day-status" class="text-xs text-text-secondary mt-0.5">Cargando...</p>
               </div>
-              <span id="pedir-day-badge" class="text-xs font-bold px-3 py-1.5 rounded-full bg-accent/30 text-text-secondary">—</span>
+              <span id="pedir-day-badge"
+                class="text-xs font-bold px-3 py-1.5 rounded-full bg-accent/30 text-text-secondary">—</span>
             </div>
 
             <!-- Holiday toggle -->
@@ -336,7 +351,9 @@
               <label for="toggle-holiday" class="text-xs text-text-secondary">Lunes festivo (pedir el martes)</label>
               <label class="relative inline-flex items-center cursor-pointer">
                 <input id="toggle-holiday" type="checkbox" class="sr-only peer">
-                <div class="w-10 h-5 bg-surface rounded-full peer-checked:bg-action/60 peer-focus:ring-2 peer-focus:ring-action/30 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-5"></div>
+                <div
+                  class="w-10 h-5 bg-surface rounded-full peer-checked:bg-action/60 peer-focus:ring-2 peer-focus:ring-action/30 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-5">
+                </div>
               </label>
             </div>
           </div>
@@ -345,7 +362,8 @@
         <!-- Filter: Sin precio -->
         <div class="flex items-center gap-3 mb-4">
           <label for="filter-sin-precio" class="flex items-center gap-2 cursor-pointer">
-            <input id="filter-sin-precio" type="checkbox" class="w-4 h-4 rounded bg-surface-light border-accent/30 text-action focus:ring-action/50">
+            <input id="filter-sin-precio" type="checkbox"
+              class="w-4 h-4 rounded bg-surface-light border-accent/30 text-action focus:ring-action/50">
             <span class="text-sm text-text-secondary">Mostrar solo "Sin precio" del día anterior</span>
           </label>
         </div>
@@ -375,19 +393,19 @@
         <!-- Empty state -->
         <div id="pedir-empty" class="hidden flex-col items-center justify-center py-16 text-center">
           <svg class="w-14 h-14 text-text-secondary/30 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
           </svg>
           <p class="text-text-secondary text-sm">No hay productos por pedir precios</p>
         </div>
 
         <!-- Generate Report Button -->
         <div class="mt-6">
-          <button
-            id="btn-generate-report"
-            class="w-full py-3.5 rounded-xl bg-action hover:bg-action-hover text-white text-sm font-bold shadow-lg shadow-action/20 transition-colors active:scale-[0.98] flex items-center justify-center gap-2"
-          >
+          <button id="btn-generate-report"
+            class="w-full py-3.5 rounded-xl bg-action hover:bg-action-hover text-white text-sm font-bold shadow-lg shadow-action/20 transition-colors active:scale-[0.98] flex items-center justify-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
             </svg>
             Generar / Compartir Reporte
           </button>
@@ -407,13 +425,12 @@
           <h3 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Respaldo de Datos</h3>
 
           <!-- Export -->
-          <button
-            id="btn-export-json"
-            class="w-full flex items-center gap-4 bg-surface-light rounded-xl p-4 border border-accent/20 hover:border-accent/40 transition-colors active:scale-[0.98]"
-          >
+          <button id="btn-export-json"
+            class="w-full flex items-center gap-4 bg-surface-light rounded-xl p-4 border border-accent/20 hover:border-accent/40 transition-colors active:scale-[0.98]">
             <div class="w-10 h-10 rounded-lg bg-accent/30 flex items-center justify-center flex-shrink-0">
               <svg class="w-5 h-5 text-action" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
             </div>
             <div class="text-left">
@@ -423,13 +440,12 @@
           </button>
 
           <!-- Import -->
-          <button
-            id="btn-import-json"
-            class="w-full flex items-center gap-4 bg-surface-light rounded-xl p-4 border border-accent/20 hover:border-accent/40 transition-colors active:scale-[0.98]"
-          >
+          <button id="btn-import-json"
+            class="w-full flex items-center gap-4 bg-surface-light rounded-xl p-4 border border-accent/20 hover:border-accent/40 transition-colors active:scale-[0.98]">
             <div class="w-10 h-10 rounded-lg bg-accent/30 flex items-center justify-center flex-shrink-0">
               <svg class="w-5 h-5 text-action" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
             </div>
             <div class="text-left">
@@ -454,11 +470,13 @@
               </div>
             </div>
             <p class="text-xs text-text-secondary leading-relaxed">
-              Control de vencimientos para supermercado y carnicería. Gestiona la rotación de productos, controla fechas de vencimiento y genera reportes de pedidos de precios.
+              Control de vencimientos para supermercado y carnicería. Gestiona la rotación de productos, controla fechas
+              de vencimiento y genera reportes de pedidos de precios.
             </p>
             <div class="mt-3 pt-3 border-t border-accent/20">
               <p id="settings-product-count" class="text-xs text-text-secondary">Productos almacenados: —</p>
-              <p id="settings-storage-info" class="text-xs text-text-secondary mt-1">Almacenamiento: IndexedDB / Local</p>
+              <p id="settings-storage-info" class="text-xs text-text-secondary mt-1">Almacenamiento: IndexedDB / Local
+              </p>
             </div>
           </div>
         </div>
@@ -476,28 +494,33 @@
       <!-- Scanner Header -->
       <div class="flex items-center justify-between px-4 py-3 bg-surface">
         <h3 class="text-sm font-bold">Escanear Código de Barras</h3>
-        <button id="btn-close-scanner" class="text-text-secondary hover:text-white p-1 transition-colors" aria-label="Cerrar escáner">
+        <button id="btn-close-scanner" class="text-text-secondary hover:text-white p-1 transition-colors"
+          aria-label="Cerrar escáner">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
       <!-- Camera Preview -->
       <div class="flex-1 relative overflow-hidden bg-black">
-        <video id="scanner-video" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline muted></video>
+        <video id="scanner-video" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline
+          muted></video>
 
         <!-- Scan overlay guides -->
         <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
           <!-- Darkened edges -->
           <div class="absolute inset-0 bg-black/40"></div>
           <!-- Clear center window -->
-          <div class="relative w-72 h-40 border-2 border-action rounded-2xl z-10" style="box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);">
+          <div class="relative w-72 h-40 border-2 border-action rounded-2xl z-10"
+            style="box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);">
             <!-- Corner accents -->
             <div class="absolute -top-0.5 -left-0.5 w-6 h-6 border-t-4 border-l-4 border-action rounded-tl-2xl"></div>
             <div class="absolute -top-0.5 -right-0.5 w-6 h-6 border-t-4 border-r-4 border-action rounded-tr-2xl"></div>
-            <div class="absolute -bottom-0.5 -left-0.5 w-6 h-6 border-b-4 border-l-4 border-action rounded-bl-2xl"></div>
-            <div class="absolute -bottom-0.5 -right-0.5 w-6 h-6 border-b-4 border-r-4 border-action rounded-br-2xl"></div>
+            <div class="absolute -bottom-0.5 -left-0.5 w-6 h-6 border-b-4 border-l-4 border-action rounded-bl-2xl">
+            </div>
+            <div class="absolute -bottom-0.5 -right-0.5 w-6 h-6 border-b-4 border-r-4 border-action rounded-br-2xl">
+            </div>
             <!-- Scan line animation -->
             <div class="absolute left-2 right-2 h-0.5 bg-action/60 top-1/2 animate-pulse"></div>
           </div>
@@ -513,10 +536,8 @@
 
       <!-- Scanner cancel button -->
       <div class="px-4 py-4 bg-surface">
-        <button
-          id="btn-cancel-scanner"
-          class="w-full py-3 rounded-xl bg-surface-light text-text-secondary text-sm font-semibold hover:bg-accent/20 transition-colors"
-        >
+        <button id="btn-cancel-scanner"
+          class="w-full py-3 rounded-xl bg-surface-light text-text-secondary text-sm font-semibold hover:bg-accent/20 transition-colors">
           Cancelar
         </button>
       </div>
@@ -532,7 +553,8 @@
       <h3 class="text-base font-bold mb-2">¿Eliminar producto?</h3>
       <p id="confirm-delete-name" class="text-sm text-text-secondary mb-6">Esta acción no se puede deshacer.</p>
       <div class="flex gap-3">
-        <button id="btn-confirm-delete-cancel" class="flex-1 py-2.5 rounded-lg bg-surface-light text-text-secondary text-sm font-semibold">
+        <button id="btn-confirm-delete-cancel"
+          class="flex-1 py-2.5 rounded-lg bg-surface-light text-text-secondary text-sm font-semibold">
           Cancelar
         </button>
         <button id="btn-confirm-delete-ok" class="flex-1 py-2.5 rounded-lg bg-exp-red text-white text-sm font-bold">
@@ -546,7 +568,8 @@
   <!-- TOAST NOTIFICATION                                            -->
   <!-- ============================================================ -->
   <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 hidden">
-    <div class="bg-surface border border-accent/30 rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 min-w-[200px]">
+    <div
+      class="bg-surface border border-accent/30 rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 min-w-[200px]">
       <span id="toast-icon" class="text-lg">✓</span>
       <p id="toast-message" class="text-sm font-medium">Mensaje</p>
     </div>
@@ -558,26 +581,35 @@
   <nav id="bottom-nav" class="bottom-nav fixed bottom-0 left-0 right-0 z-30 bg-surface border-t border-accent/30">
     <div class="flex items-center justify-around h-16 max-w-lg mx-auto">
       <!-- Inventario -->
-      <button data-view="view-inventory" class="nav-btn flex flex-col items-center justify-center gap-1 flex-1 h-full text-action transition-colors" aria-label="Inventario">
+      <button data-view="view-inventory"
+        class="nav-btn flex flex-col items-center justify-center gap-1 flex-1 h-full text-action transition-colors"
+        aria-label="Inventario">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
         </svg>
         <span class="text-[10px] font-semibold">Inventario</span>
       </button>
 
       <!-- Pedir Precios -->
-      <button data-view="view-pedir-precios" class="nav-btn flex flex-col items-center justify-center gap-1 flex-1 h-full text-text-secondary transition-colors" aria-label="Pedir Precios">
+      <button data-view="view-pedir-precios"
+        class="nav-btn flex flex-col items-center justify-center gap-1 flex-1 h-full text-text-secondary transition-colors"
+        aria-label="Pedir Precios">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
         </svg>
         <span class="text-[10px] font-semibold">Precios</span>
       </button>
 
       <!-- Configuración -->
-      <button data-view="view-settings" class="nav-btn flex flex-col items-center justify-center gap-1 flex-1 h-full text-text-secondary transition-colors" aria-label="Configuración">
+      <button data-view="view-settings"
+        class="nav-btn flex flex-col items-center justify-center gap-1 flex-1 h-full text-text-secondary transition-colors"
+        aria-label="Configuración">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
         <span class="text-[10px] font-semibold">Ajustes</span>
       </button>
@@ -588,4 +620,5 @@
   <script src="js/app.js" type="module"></script>
 
 </body>
+
 </html>

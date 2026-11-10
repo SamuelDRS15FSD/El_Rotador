@@ -214,7 +214,12 @@ export function renderProductList() {
     }
 
     const formattedDate = formatDateDisplay(p.expiryDate);
-    const measureLabel = p.measureType === 'kilogramos' || p.measureType === 'kg' ? 'Kg' : 'Unidades';
+    const isKg = p.measureType === 'kilogramos' || p.measureType === 'kg';
+    const measureLabel = isKg ? 'Kg' : 'Unidades';
+    const unitShort = isKg ? 'kg' : 'uds';
+    const stockDisplay = (p.quantity !== undefined && p.quantity !== null && p.quantity !== '')
+      ? `<span class="bg-surface px-2 py-0.5 rounded text-white font-medium border border-accent/30">Stock: <strong class="text-action">${p.quantity} ${unitShort}</strong></span>`
+      : `<span>${measureLabel}</span>`;
 
     return `
       <div class="product-card bg-surface-light rounded-xl p-4 border-l-4 ${style.border} active:scale-[0.99] transition-transform cursor-pointer shadow-md"
@@ -222,10 +227,10 @@ export function renderProductList() {
         <div class="flex justify-between items-start">
           <div class="flex-1 min-w-0 pr-2">
             <h3 class="font-semibold text-sm text-white truncate">${escapeHtml(p.name)}</h3>
-            <p class="text-xs text-text-secondary mt-0.5">
-              ${p.plu ? `PLU/EAN: <span class="text-text-primary font-mono">${escapeHtml(p.plu)}</span> · ` : ''}
-              <span>${measureLabel}</span>
-            </p>
+            <div class="text-xs text-text-secondary mt-1 flex flex-wrap items-center gap-1.5">
+              ${p.plu ? `<span>PLU/EAN: <strong class="text-text-primary font-mono">${escapeHtml(p.plu)}</strong></span> · ` : ''}
+              ${stockDisplay}
+            </div>
           </div>
           <div class="text-right flex-shrink-0">
             <span class="text-xs font-bold px-2.5 py-1 rounded-full ${style.badgeBg} ${style.badgeText}">
@@ -267,7 +272,15 @@ export function openAddProductForm(productId = null) {
     document.getElementById('product-section').value = product.section || currentSection;
     document.getElementById('product-notes').value = product.notes || '';
 
+    const qtyInput = document.getElementById('product-quantity');
+    if (qtyInput) {
+      qtyInput.value = (product.quantity !== undefined && product.quantity !== null && product.quantity !== '') ? product.quantity : '';
+    }
+
     const isKg = product.measureType === 'kilogramos' || product.measureType === 'kg';
+    const unitEl = document.getElementById('product-quantity-unit');
+    if (unitEl) unitEl.textContent = isKg ? 'Kg' : 'Uds';
+
     const measureRadios = form.querySelectorAll('input[name="measure"]');
     measureRadios.forEach(radio => {
       radio.checked = isKg ? radio.value === 'kilogramos' : radio.value === 'unidades';
@@ -276,6 +289,11 @@ export function openAddProductForm(productId = null) {
     form.reset();
     if (title) title.textContent = 'Agregar Producto';
     if (btnDelete) btnDelete.classList.add('hidden');
+
+    const qtyInput = document.getElementById('product-quantity');
+    if (qtyInput) qtyInput.value = '';
+    const unitEl = document.getElementById('product-quantity-unit');
+    if (unitEl) unitEl.textContent = 'Uds';
 
     // Preseleccionar sección actual
     const sectionSelect = document.getElementById('product-section');
@@ -303,6 +321,8 @@ export function saveProductFromForm() {
   const expiryDate = document.getElementById('product-expiry').value;
   const section = document.getElementById('product-section').value;
   const notes = document.getElementById('product-notes').value.trim();
+  const quantityRaw = document.getElementById('product-quantity') ? document.getElementById('product-quantity').value : '';
+  const quantity = quantityRaw !== '' ? Number(quantityRaw) : 0;
 
   const selectedMeasure = document.querySelector('input[name="measure"]:checked');
   const measureType = selectedMeasure ? selectedMeasure.value : 'unidades';
@@ -323,6 +343,7 @@ export function saveProductFromForm() {
     expiryDate,
     section,
     measureType,
+    quantity,
     notes
   };
 
@@ -534,6 +555,7 @@ export function renderPedirPrecios() {
             <p class="text-xs text-text-secondary mt-0.5">
               <span class="capitalize text-action/90 font-medium">${p.section}</span>
               ${p.plu ? ` · PLU: ${escapeHtml(p.plu)}` : ''}
+              · Existencia: <strong class="text-white">${p.quantity !== undefined && p.quantity !== null && p.quantity !== '' ? p.quantity : 0} ${unitLabel}</strong>
               ${sinPrecioAyer ? ' · <span class="text-exp-red font-medium">⚠️ Sin precio ayer</span>' : ''}
             </p>
           </div>
@@ -544,11 +566,12 @@ export function renderPedirPrecios() {
 
         <div class="flex items-center gap-3 mt-3 pt-3 border-t border-accent/20">
           <div class="flex items-center gap-1.5 flex-1">
+            <span class="text-xs text-text-secondary font-medium mr-1">Pedir:</span>
             <input
               type="number"
               step="any"
               min="0"
-              placeholder="0"
+              placeholder="${p.quantity || 0}"
               value="${quantity !== undefined && quantity !== null ? quantity : ''}"
               data-product-id="${p.id}"
               class="pedir-quantity w-24 bg-surface rounded-lg px-3 py-2 text-sm text-white placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/30"
@@ -642,11 +665,12 @@ export function generateAndShareReport() {
       secProducts.forEach((p, index) => {
         const days = store.getDaysUntilExpiry(p.expiryDate);
         const req = requests.find(r => r.productId === p.id);
-        const qty = req && req.quantity ? req.quantity : '0';
+        const stock = (p.quantity !== undefined && p.quantity !== null && p.quantity !== '') ? p.quantity : '0';
+        const qtyToOrder = (req && req.quantity !== undefined && req.quantity !== null && req.quantity !== '') ? req.quantity : stock;
         const unit = p.measureType === 'kilogramos' || p.measureType === 'kg' ? 'kg' : 'uds';
         const status = req && req.priceRequested ? '✅' : '⏳';
 
-        reportText += `${index + 1}. ${p.name} ${p.plu ? `[${p.plu}]` : ''} - Cant: ${qty} ${unit} (Vence en ${days}d) ${status}\n`;
+        reportText += `${index + 1}. ${p.name} ${p.plu ? `[${p.plu}]` : ''} - Stock: ${stock} ${unit} | A pedir: ${qtyToOrder} ${unit} (Vence en ${days}d) ${status}\n`;
       });
       reportText += '\n';
     }

@@ -86,6 +86,7 @@ export function addProduct(product) {
     expiryDate: product.expiryDate || '',
     section: product.section || 'autoservicio',
     measureType: product.measureType || 'unidades',
+    quantity: product.quantity !== undefined && product.quantity !== null && product.quantity !== '' ? Number(product.quantity) : 0,
     notes: product.notes || '',
     createdAt: new Date().toISOString()
   };

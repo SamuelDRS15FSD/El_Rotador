@@ -70,6 +70,7 @@ function initializeSampleData() {
         expiryDate: addDays(1), // Crítico (1 día)
         section: 'autoservicio',
         measureType: 'kilogramos',
+        quantity: 14.5,
         notes: 'Bandeja envasada al vacío - Lote A1'
       },
       {
@@ -78,6 +79,7 @@ function initializeSampleData() {
         expiryDate: addDays(3), // Urgente (3 días)
         section: 'autoservicio',
         measureType: 'kilogramos',
+        quantity: 22.0,
         notes: 'Proveedor Avícola Central'
       },
       {
@@ -86,6 +88,7 @@ function initializeSampleData() {
         expiryDate: addDays(5), // Precaución (5 días)
         section: 'autoservicio',
         measureType: 'unidades',
+        quantity: 30,
         notes: 'Elaboración del lunes'
       },
       {
@@ -94,6 +97,7 @@ function initializeSampleData() {
         expiryDate: addDays(10), // OK (>6 días)
         section: 'autoservicio',
         measureType: 'kilogramos',
+        quantity: 8.7,
         notes: 'Lote B14'
       },
       // ATENDIDA
@@ -103,6 +107,7 @@ function initializeSampleData() {
         expiryDate: addDays(0), // Vence HOY (Crítico)
         section: 'atendida',
         measureType: 'kilogramos',
+        quantity: 18.2,
         notes: 'Mostrador principal'
       },
       {
@@ -111,6 +116,7 @@ function initializeSampleData() {
         expiryDate: addDays(2), // Urgente (2 días)
         section: 'atendida',
         measureType: 'kilogramos',
+        quantity: 12.0,
         notes: 'Lote embutido artesanal'
       },
       {
@@ -119,6 +125,7 @@ function initializeSampleData() {
         expiryDate: addDays(6), // Precaución (6 días)
         section: 'atendida',
         measureType: 'kilogramos',
+        quantity: 9.4,
         notes: 'Cámara 2'
       },
       {
@@ -127,6 +134,7 @@ function initializeSampleData() {
         expiryDate: addDays(14), // OK
         section: 'atendida',
         measureType: 'kilogramos',
+        quantity: 35.0,
         notes: 'Media res fresca'
       }
     ];
@@ -219,6 +227,16 @@ function setupProductFormEvents() {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       ui.saveProductFromForm();
+    });
+
+    // Actualizar indicador de unidad al cambiar entre Unidades y Kilogramos
+    form.querySelectorAll('input[name="measure"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const unitEl = document.getElementById('product-quantity-unit');
+        if (unitEl) {
+          unitEl.textContent = e.target.value === 'kilogramos' ? 'Kg' : 'Uds';
+        }
+      });
     });
   }
 
