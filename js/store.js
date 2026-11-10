@@ -1,10 +1,26 @@
 /**
  * store.js - Módulo de datos/estado para El Rotador
- * Gestiona LocalStorage y toda la lógica de negocio
+ * Gestiona LocalStorage, Catálogo Maestro y lógica de negocio
  */
 
 // Clave de almacenamiento en LocalStorage
 const STORAGE_KEY = 'elRotador';
+
+// Catálogo Maestro inicial predeterminado con productos de carnicería / supermercado
+const DEFAULT_MASTER_CATALOG = [
+  { name: 'Bife de Chorizo Premium', code: '7791234567890', provider: 'Frigorífico Central', measureType: 'kilogramos', section: 'autoservicio' },
+  { name: 'Pechuga de Pollo Fresca', code: '7792345678901', provider: 'Avícola San Marcos', measureType: 'kilogramos', section: 'autoservicio' },
+  { name: 'Hamburguesas Caseras x4', code: '7793456789012', provider: 'Elaboración Propia', measureType: 'unidades', section: 'autoservicio' },
+  { name: 'Colita de Cuadril Envasada', code: '7794567890123', provider: 'Frigorífico Pampeano', measureType: 'kilogramos', section: 'autoservicio' },
+  { name: 'Milanesas de Carne Preparadas', code: '4011', provider: 'Elaboración Mostrador', measureType: 'kilogramos', section: 'atendida' },
+  { name: 'Chorizo Bombón Especial', code: '4022', provider: 'Embutidos Artesanales', measureType: 'kilogramos', section: 'atendida' },
+  { name: 'Matambre de Cerdo', code: '4033', provider: 'Cabaña Porcina', measureType: 'kilogramos', section: 'atendida' },
+  { name: 'Asado de Tira Especial', code: '4044', provider: 'Frigorífico Central', measureType: 'kilogramos', section: 'atendida' },
+  { name: 'Lomo Fino Vacuno', code: '4055', provider: 'Frigorífico Pampeano', measureType: 'kilogramos', section: 'atendida' },
+  { name: 'Bondiola de Cerdo', code: '4066', provider: 'Cabaña Porcina', measureType: 'kilogramos', section: 'atendida' },
+  { name: 'Pollo Entero Grado A', code: '7795678901234', provider: 'Avícola San Marcos', measureType: 'unidades', section: 'autoservicio' },
+  { name: 'Piqueo Parrillero x10', code: '7796789012345', provider: 'Elaboración Propia', measureType: 'unidades', section: 'autoservicio' }
+];
 
 // ============================================================
 // Helpers internos
@@ -12,12 +28,18 @@ const STORAGE_KEY = 'elRotador';
 
 /**
  * Lee el estado completo desde LocalStorage
- * @returns {{ products: Array, priceRequests: Array, settings: Object }}
+ * @returns {{ products: Array, priceRequests: Array, masterCatalog: Array, settings: Object }}
  */
 function _loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (!parsed.masterCatalog || !Array.isArray(parsed.masterCatalog) || parsed.masterCatalog.length === 0) {
+        parsed.masterCatalog = [...DEFAULT_MASTER_CATALOG];
+      }
+      return parsed;
+    }
   } catch (e) {
     console.error('Error leyendo LocalStorage:', e);
   }
@@ -25,6 +47,7 @@ function _loadState() {
   return {
     products: [],
     priceRequests: [],
+    masterCatalog: [...DEFAULT_MASTER_CATALOG],
     settings: { mondayHoliday: false }
   };
 }
@@ -47,6 +70,109 @@ function _saveState(state) {
  */
 function _generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+}
+
+// ============================================================
+// Diferenciación Inteligente de Códigos (PLU vs EAN)
+// ============================================================
+
+/**
+ * Evalúa el código numérico:
+ * - 1 a 6 dígitos: PLU (Product Look-Up)
+ * - 7 o más dígitos: EAN (código de barras comercial)
+ * @param {string|number} code - Código a evaluar
+ * @returns {{ type: 'PLU'|'EAN'|null, label: string, code: string }}
+ */
+export function formatCodeInfo(code) {
+  if (!code) return { type: null, label: '', code: '' };
+  const str = String(code).trim();
+  const digits = str.replace(/\D/g, '');
+
+  if (!digits) {
+    return { type: null, label: str, code: str };
+  }
+
+  if (digits.length >= 1 && digits.length <= 6) {
+    return { type: 'PLU', label: `PLU: ${str}`, code: str };
+  }
+
+  return { type: 'EAN', label: `EAN: ${str}`, code: str };
+}
+
+// ============================================================
+// Catálogo Maestro de Productos
+// ============================================================
+
+/**
+ * Obtiene la lista completa del catálogo maestro
+ * @returns {Array} Catálogo maestro
+ */
+export function getMasterCatalog() {
+  const state = _loadState();
+  return state.masterCatalog || [];
+}
+
+/**
+ * Agrega o actualiza un ítem en el Catálogo Maestro
+ * @param {{ name: string, code?: string, provider?: string, measureType?: string, section?: string }} item
+ */
+export function addToMasterCatalog(item) {
+  if (!item || !item.name) return;
+  const state = _loadState();
+  if (!state.masterCatalog) state.masterCatalog = [];
+
+  const cleanName = item.name.trim();
+  const cleanCode = (item.code || item.plu || '').trim();
+
+  // Buscar coincidencia por código si existe, o por nombre exacto
+  let idx = -1;
+  if (cleanCode) {
+    idx = state.masterCatalog.findIndex(entry => entry.code && entry.code.toLowerCase() === cleanCode.toLowerCase());
+  }
+  if (idx === -1) {
+    idx = state.masterCatalog.findIndex(entry => entry.name.toLowerCase() === cleanName.toLowerCase());
+  }
+
+  const catalogEntry = {
+    name: cleanName,
+    code: cleanCode || (idx !== -1 ? state.masterCatalog[idx].code : ''),
+    provider: (item.provider || item.proveedor || (idx !== -1 ? state.masterCatalog[idx].provider : '')).trim(),
+    measureType: item.measureType || (idx !== -1 ? state.masterCatalog[idx].measureType : 'unidades'),
+    section: item.section || (idx !== -1 ? state.masterCatalog[idx].section : 'autoservicio')
+  };
+
+  if (idx !== -1) {
+    state.masterCatalog[idx] = { ...state.masterCatalog[idx], ...catalogEntry };
+  } else {
+    state.masterCatalog.push(catalogEntry);
+  }
+
+  _saveState(state);
+  return catalogEntry;
+}
+
+/**
+ * Busca un producto en el catálogo maestro por su código exacto
+ * @param {string} code - Código PLU o EAN
+ * @returns {Object|null}
+ */
+export function findMasterCatalogByCode(code) {
+  if (!code) return null;
+  const clean = String(code).trim().toLowerCase();
+  const catalog = getMasterCatalog();
+  return catalog.find(item => item.code && item.code.toLowerCase() === clean) || null;
+}
+
+/**
+ * Busca un producto en el catálogo maestro por coincidencia de nombre
+ * @param {string} name - Nombre o término
+ * @returns {Object|null}
+ */
+export function findMasterCatalogByName(name) {
+  if (!name) return null;
+  const clean = String(name).trim().toLowerCase();
+  const catalog = getMasterCatalog();
+  return catalog.find(item => item.name.toLowerCase() === clean) || null;
 }
 
 // ============================================================
@@ -79,19 +205,39 @@ export function getProductsBySection(section) {
  */
 export function addProduct(product) {
   const state = _loadState();
+  const rawQuantity = product.cantidad !== undefined ? product.cantidad : (product.quantity !== undefined ? product.quantity : 0);
+  const parsedQuantity = Number(rawQuantity) || 0;
+  const provider = (product.provider || product.proveedor || '').trim();
+
   const newProduct = {
     id: _generateId(),
-    name: product.name || '',
-    plu: product.plu || '',
+    name: (product.name || '').trim(),
+    plu: (product.plu || product.code || '').trim(),
     expiryDate: product.expiryDate || '',
     section: product.section || 'autoservicio',
     measureType: product.measureType || 'unidades',
-    quantity: product.quantity !== undefined && product.quantity !== null && product.quantity !== '' ? Number(product.quantity) : 0,
-    notes: product.notes || '',
+    cantidad: parsedQuantity,
+    quantity: parsedQuantity, // Compatibilidad bidireccional
+    provider: provider,
+    proveedor: provider,
+    notes: (product.notes || '').trim(),
     createdAt: new Date().toISOString()
   };
+
   state.products.push(newProduct);
   _saveState(state);
+
+  // Auto-alimentar el Catálogo Maestro
+  if (newProduct.name) {
+    addToMasterCatalog({
+      name: newProduct.name,
+      code: newProduct.plu,
+      provider: provider,
+      measureType: newProduct.measureType,
+      section: newProduct.section
+    });
+  }
+
   return newProduct;
 }
 
@@ -106,9 +252,33 @@ export function updateProduct(id, data) {
   const index = state.products.findIndex(p => p.id === id);
   if (index === -1) return null;
 
-  // Mezclar datos existentes con los nuevos
-  state.products[index] = { ...state.products[index], ...data };
+  // Sincronizar cantidad/quantity y provider/proveedor
+  const updatedData = { ...data };
+  if (updatedData.cantidad !== undefined || updatedData.quantity !== undefined) {
+    const qty = Number(updatedData.cantidad !== undefined ? updatedData.cantidad : updatedData.quantity) || 0;
+    updatedData.cantidad = qty;
+    updatedData.quantity = qty;
+  }
+  if (updatedData.provider !== undefined || updatedData.proveedor !== undefined) {
+    const prov = (updatedData.provider || updatedData.proveedor || '').trim();
+    updatedData.provider = prov;
+    updatedData.proveedor = prov;
+  }
+
+  state.products[index] = { ...state.products[index], ...updatedData };
   _saveState(state);
+
+  // Actualizar catálogo maestro si corresponde
+  if (state.products[index].name) {
+    addToMasterCatalog({
+      name: state.products[index].name,
+      code: state.products[index].plu,
+      provider: state.products[index].provider,
+      measureType: state.products[index].measureType,
+      section: state.products[index].section
+    });
+  }
+
   return state.products[index];
 }
 
@@ -148,6 +318,7 @@ export function getProduct(id) {
  * @returns {number} Días restantes (negativo si ya venció)
  */
 export function getDaysUntilExpiry(expiryDate) {
+  if (!expiryDate) return 999;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const expiry = new Date(expiryDate + 'T00:00:00');
@@ -157,6 +328,11 @@ export function getDaysUntilExpiry(expiryDate) {
 
 /**
  * Determina el nivel de alerta según los días restantes
+ * Reglas de Spec:
+ * - > 6 días: 'ok' (Verde)
+ * - ≤ 6 días: 'warning' (Amarillo / Precaución)
+ * - ≤ 3 días: 'urgent' (Naranja / Urgente)
+ * - ≤ 1 día o vencido: 'critical' (Rojo / Crítico)
  * @param {number} daysRemaining - Días hasta el vencimiento
  * @returns {'ok'|'warning'|'urgent'|'critical'} Nivel de alerta
  */
@@ -192,10 +368,10 @@ export function savePriceRequest(request) {
     id: _generateId(),
     productId: request.productId || '',
     date: request.date || new Date().toISOString().split('T')[0],
-    quantity: request.quantity || 0,
+    quantity: Number(request.quantity) || 0,
     unit: request.unit || 'unidades',
-    priceRequested: request.priceRequested || false,
-    priceGiven: request.priceGiven || false
+    priceRequested: !!request.priceRequested,
+    priceGiven: !!request.priceGiven
   };
   state.priceRequests.push(newRequest);
   _saveState(state);
@@ -219,8 +395,7 @@ export function updatePriceRequest(id, data) {
 }
 
 /**
- * Obtiene productos que necesitan solicitar precio (próximos a vencer)
- * Filtra productos con ≤6 días de vencimiento en la sección indicada
+ * Obtiene productos que necesitan solicitar precio (próximos a vencer en rango crítico ≤6 días)
  * @param {string} [section] - Sección opcional para filtrar
  * @returns {Array} Productos que necesitan precio
  */
@@ -234,8 +409,9 @@ export function getProductsNeedingPrices(section) {
 
 /**
  * Determina si la fecha dada es un día de pedir precios
- * Días de pedir: Lunes (1) y Jueves (4)
- * Si lunes es festivo, se traslada al martes (2)
+ * Regla de negocio:
+ * - Días habituales: Lunes (1) y Jueves (4)
+ * - Si lunes es festivo: el lunes se traslada al martes (2) y se mantiene el jueves (4)
  * @param {Date} date - Fecha a evaluar
  * @param {boolean} mondayHoliday - Si el lunes es festivo
  * @returns {boolean}
@@ -263,7 +439,6 @@ export function isPriceRequestDay(date, mondayHoliday) {
  */
 export function getNextPriceRequestDay(date, mondayHoliday) {
   const next = new Date(date);
-  // Avanzar hasta encontrar un día de pedir (máximo 7 iteraciones)
   for (let i = 0; i < 7; i++) {
     next.setDate(next.getDate() + 1);
     if (isPriceRequestDay(next, mondayHoliday)) {
@@ -320,15 +495,14 @@ export function importData(jsonString) {
   try {
     const data = JSON.parse(jsonString);
 
-    // Validar estructura mínima
     if (!data || typeof data !== 'object') {
       throw new Error('Formato de datos inválido');
     }
 
-    // Asegurar que las propiedades principales existen
     const state = {
       products: Array.isArray(data.products) ? data.products : [],
       priceRequests: Array.isArray(data.priceRequests) ? data.priceRequests : [],
+      masterCatalog: Array.isArray(data.masterCatalog) && data.masterCatalog.length > 0 ? data.masterCatalog : [...DEFAULT_MASTER_CATALOG],
       settings: data.settings || { mondayHoliday: false }
     };
 

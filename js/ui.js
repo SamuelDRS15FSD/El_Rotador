@@ -1,6 +1,7 @@
 /**
  * ui.js - Módulo de interfaz/renderizado para El Rotador
  * Totalmente sincronizado con index.html y store.js
+ * Incluye distinción cromática, diferenciación PLU/EAN, validación de cantidad y Catálogo Maestro
  */
 
 import * as store from './store.js';
@@ -65,23 +66,43 @@ export function updateHeaderDate() {
 }
 
 // ============================================================
-// LISTA DE PRODUCTOS (INVENTARIO)
+// SECCIONES & DISTINCIÓN CROMÁTICA
 // ============================================================
 
+/**
+ * Cambia la sección activa y actualiza estilos cromáticos:
+ * - Autoservicio: Azul / Índigo
+ * - Atendida: Ámbar / Dorado
+ * @param {'autoservicio'|'atendida'} section
+ */
 export function setSection(section) {
   currentSection = section;
-  
-  // Actualizar tabs visuales
-  document.querySelectorAll('.inventory-tab').forEach(tab => {
-    const isCurrent = tab.getAttribute('data-section') === section;
-    if (isCurrent) {
-      tab.classList.add('border-action', 'text-action');
-      tab.classList.remove('border-transparent', 'text-text-secondary');
+
+  // Actualizar indicador en el header
+  const indicator = document.getElementById('active-section-indicator');
+  if (indicator) {
+    if (section === 'autoservicio') {
+      indicator.textContent = '🛒 AUTOSERVICIO';
+      indicator.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm';
     } else {
-      tab.classList.remove('border-action', 'text-action');
-      tab.classList.add('border-transparent', 'text-text-secondary');
+      indicator.textContent = '🥩 ATENDIDA';
+      indicator.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm';
     }
-  });
+  }
+
+  // Actualizar tabs superiores con estilos diferenciados
+  const tabAuto = document.querySelector('.inventory-tab[data-section="autoservicio"]');
+  const tabAtend = document.querySelector('.inventory-tab[data-section="atendida"]');
+
+  if (tabAuto && tabAtend) {
+    if (section === 'autoservicio') {
+      tabAuto.className = 'inventory-tab flex-1 py-3 text-xs sm:text-sm font-bold text-center transition-all flex items-center justify-center gap-1.5 border-b-2 border-blue-500 text-blue-400 bg-blue-950/30';
+      tabAtend.className = 'inventory-tab flex-1 py-3 text-xs sm:text-sm font-bold text-center transition-all flex items-center justify-center gap-1.5 border-b-2 border-transparent text-text-secondary bg-transparent hover:text-text-primary';
+    } else {
+      tabAtend.className = 'inventory-tab flex-1 py-3 text-xs sm:text-sm font-bold text-center transition-all flex items-center justify-center gap-1.5 border-b-2 border-amber-500 text-amber-400 bg-amber-950/30';
+      tabAuto.className = 'inventory-tab flex-1 py-3 text-xs sm:text-sm font-bold text-center transition-all flex items-center justify-center gap-1.5 border-b-2 border-transparent text-text-secondary bg-transparent hover:text-text-primary';
+    }
+  }
 
   renderProductList();
 }
@@ -106,7 +127,6 @@ export function setSort(sortType) {
 }
 
 export function setFilter(filterType) {
-  // Toggle filter
   if (currentFilter === filterType) {
     currentFilter = 'all';
   } else {
@@ -125,6 +145,10 @@ export function setFilter(filterType) {
   renderProductList();
 }
 
+// ============================================================
+// LISTA DE PRODUCTOS (INVENTARIO)
+// ============================================================
+
 export function renderProductList() {
   const container = document.getElementById('product-list');
   const emptyState = document.getElementById('inventory-empty');
@@ -136,9 +160,10 @@ export function renderProductList() {
   if (searchQuery) {
     products = products.filter(p => {
       const name = (p.name || '').toLowerCase();
-      const code = (p.plu || '').toLowerCase();
+      const code = (p.plu || p.code || '').toLowerCase();
       const notes = (p.notes || '').toLowerCase();
-      return name.includes(searchQuery) || code.includes(searchQuery) || notes.includes(searchQuery);
+      const provider = (p.provider || p.proveedor || '').toLowerCase();
+      return name.includes(searchQuery) || code.includes(searchQuery) || notes.includes(searchQuery) || provider.includes(searchQuery);
     });
   }
 
@@ -173,7 +198,6 @@ export function renderProductList() {
   }
 
   // Configuración de colores según nivel de alerta
-  // 6 días: amarillo, 3 días: naranja, <=1 o vencido: rojo, >6 días: verde
   const alertStyles = {
     ok: {
       border: 'border-exp-green',
@@ -197,6 +221,8 @@ export function renderProductList() {
     }
   };
 
+  const isAuto = currentSection === 'autoservicio';
+
   container.innerHTML = products.map(p => {
     const days = store.getDaysUntilExpiry(p.expiryDate);
     const alertLevel = store.getAlertLevel(days);
@@ -215,31 +241,56 @@ export function renderProductList() {
 
     const formattedDate = formatDateDisplay(p.expiryDate);
     const isKg = p.measureType === 'kilogramos' || p.measureType === 'kg';
-    const measureLabel = isKg ? 'Kg' : 'Unidades';
-    const unitShort = isKg ? 'kg' : 'uds';
-    const stockDisplay = (p.quantity !== undefined && p.quantity !== null && p.quantity !== '')
-      ? `<span class="bg-surface px-2 py-0.5 rounded text-white font-medium border border-accent/30">Stock: <strong class="text-action">${p.quantity} ${unitShort}</strong></span>`
-      : `<span>${measureLabel}</span>`;
+    const unitLabel = isKg ? 'kg' : 'uds';
+    const cantidadVal = (p.cantidad !== undefined && p.cantidad !== null) ? p.cantidad : (p.quantity || 0);
+
+    // Diferenciación inteligente PLU vs EAN (1-6 dígitos vs 7+)
+    const codeInfo = store.formatCodeInfo(p.plu || p.code);
+    let codeBadgeHtml = '';
+    if (codeInfo.type === 'PLU') {
+      codeBadgeHtml = `<span class="font-mono text-xs font-bold text-purple-300 bg-purple-950/50 px-2 py-0.5 rounded border border-purple-500/40">PLU: ${escapeHtml(codeInfo.code)}</span>`;
+    } else if (codeInfo.type === 'EAN') {
+      codeBadgeHtml = `<span class="font-mono text-xs font-bold text-cyan-300 bg-cyan-950/50 px-2 py-0.5 rounded border border-cyan-500/40">EAN: ${escapeHtml(codeInfo.code)}</span>`;
+    }
+
+    // Distinción cromática de tarjeta según sección
+    const cardBgClass = isAuto
+      ? 'bg-[#182338] hover:bg-[#1d2b45] border-accent/30'
+      : 'bg-[#282017] hover:bg-[#32281e] border-amber-900/30';
+
+    const sectionBadge = isAuto
+      ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30">🛒 Autoservicio</span>`
+      : `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">🥩 Atendida</span>`;
+
+    const providerHtml = (p.provider || p.proveedor)
+      ? `<span class="text-[11px] text-text-secondary/80 truncate">🏭 ${escapeHtml(p.provider || p.proveedor)}</span>`
+      : '';
 
     return `
-      <div class="product-card bg-surface-light rounded-xl p-4 border-l-4 ${style.border} active:scale-[0.99] transition-transform cursor-pointer shadow-md"
+      <div class="product-card rounded-xl p-4 border-l-4 ${style.border} ${cardBgClass} active:scale-[0.99] transition-all cursor-pointer shadow-lg border"
            data-id="${p.id}">
-        <div class="flex justify-between items-start">
-          <div class="flex-1 min-w-0 pr-2">
-            <h3 class="font-semibold text-sm text-white truncate">${escapeHtml(p.name)}</h3>
-            <div class="text-xs text-text-secondary mt-1 flex flex-wrap items-center gap-1.5">
-              ${p.plu ? `<span>PLU/EAN: <strong class="text-text-primary font-mono">${escapeHtml(p.plu)}</strong></span> · ` : ''}
-              ${stockDisplay}
+        <div class="flex justify-between items-start gap-2">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              ${sectionBadge}
+              ${codeBadgeHtml}
+            </div>
+            <h3 class="font-bold text-base text-white truncate">${escapeHtml(p.name)}</h3>
+            <div class="flex flex-wrap items-center gap-2 mt-1.5">
+              <span class="px-2.5 py-0.5 rounded bg-surface text-xs font-bold text-white border border-accent/40">
+                Cant: <strong class="text-action">${cantidadVal}</strong> ${unitLabel}
+              </span>
+              ${providerHtml}
             </div>
           </div>
           <div class="text-right flex-shrink-0">
-            <span class="text-xs font-bold px-2.5 py-1 rounded-full ${style.badgeBg} ${style.badgeText}">
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full ${style.badgeBg} ${style.badgeText} shadow-sm">
               ${daysLabel}
             </span>
           </div>
         </div>
-        <div class="flex justify-between items-center mt-2.5 pt-2 border-t border-accent/20 text-xs text-text-secondary">
-          <span>📅 Vence: <strong class="text-text-primary">${formattedDate}</strong></span>
+        <div class="flex justify-between items-center mt-3 pt-2.5 border-t border-accent/20 text-xs text-text-secondary">
+          <span>📅 Vence: <strong class="text-text-primary font-medium">${formattedDate}</strong></span>
           ${p.notes ? `<span class="italic truncate max-w-[150px] text-text-secondary/70">📝 ${escapeHtml(p.notes)}</span>` : ''}
         </div>
       </div>
@@ -248,16 +299,169 @@ export function renderProductList() {
 }
 
 // ============================================================
-// FORMULARIO AGREGAR / EDITAR PRODUCTO
+// FORMULARIO AGREGAR / EDITAR PRODUCTO & AUTOCOMPLETADO
 // ============================================================
+
+/**
+ * Actualiza las reglas del input de cantidad según la unidad:
+ * - Unidades: step="1", solo enteros
+ * - Kilogramos: step="any", decimales permitidos
+ * @param {'unidades'|'kilogramos'} measureType
+ */
+export function updateQuantityInputRules(measureType) {
+  const isKg = measureType === 'kilogramos' || measureType === 'kg';
+  const qtyInput = document.getElementById('product-quantity');
+  const unitBadge = document.getElementById('product-quantity-unit');
+  const typeLabel = document.getElementById('product-quantity-type-label');
+  const hintEl = document.getElementById('product-quantity-hint');
+
+  if (qtyInput) {
+    if (isKg) {
+      qtyInput.step = 'any';
+      qtyInput.inputMode = 'decimal';
+      qtyInput.placeholder = 'Ej: 2.5 (permite decimales)';
+    } else {
+      qtyInput.step = '1';
+      qtyInput.inputMode = 'numeric';
+      qtyInput.placeholder = 'Ej: 10 (piezas enteras)';
+      // Si el valor actual tenía decimales, truncar
+      if (qtyInput.value && qtyInput.value.includes('.')) {
+        qtyInput.value = Math.floor(Number(qtyInput.value));
+      }
+    }
+  }
+
+  if (unitBadge) {
+    unitBadge.textContent = isKg ? 'Kg' : 'Uds';
+  }
+
+  if (typeLabel) {
+    typeLabel.textContent = isKg ? 'Permite decimales (kg)' : 'Solo enteros (piezas)';
+    typeLabel.className = isKg ? 'text-[11px] font-semibold text-sec-atend' : 'text-[11px] font-semibold text-sec-auto';
+  }
+
+  if (hintEl) {
+    hintEl.textContent = isKg
+      ? 'Para kilogramos puedes ingresar números con decimales (ej. 1.25, 3.5 kg).'
+      : 'Para unidades se requieren números enteros sin decimales (ej. 1, 5, 20).';
+  }
+}
+
+/**
+ * Rellena los <datalist> del Catálogo Maestro para autocompletado nativo
+ */
+export function updateCatalogDatalists() {
+  const catalog = store.getMasterCatalog();
+  const datalistNames = document.getElementById('catalogo-nombres');
+  const datalistCodes = document.getElementById('catalogo-codigos');
+
+  if (datalistNames) {
+    datalistNames.innerHTML = catalog.map(item => `
+      <option value="${escapeHtml(item.name)}">${item.code ? `[${escapeHtml(item.code)}] ` : ''}${escapeHtml(item.provider || '')}</option>
+    `).join('');
+  }
+
+  if (datalistCodes) {
+    datalistCodes.innerHTML = catalog
+      .filter(item => item.code)
+      .map(item => `
+        <option value="${escapeHtml(item.code)}">${escapeHtml(item.name)}</option>
+      `).join('');
+  }
+
+  // Actualizar contador en ajustes
+  const catalogCountEl = document.getElementById('master-catalog-count');
+  if (catalogCountEl) {
+    catalogCountEl.textContent = `${catalog.length} productos registrados`;
+  }
+}
+
+/**
+ * Intenta autocompletar el formulario buscando en el Catálogo Maestro
+ * @param {string} value - Valor buscado
+ * @param {'code'|'name'} source - Origen del input
+ */
+export function handleCatalogAutocomplete(value, source) {
+  if (!value || value.length < 2) return;
+  const matchHint = document.getElementById('catalog-match-hint');
+
+  let match = null;
+  if (source === 'code') {
+    match = store.findMasterCatalogByCode(value);
+  } else if (source === 'name') {
+    match = store.findMasterCatalogByName(value);
+  }
+
+  if (match) {
+    const nameInput = document.getElementById('product-name');
+    const codeInput = document.getElementById('product-code');
+    const providerInput = document.getElementById('product-provider');
+    const sectionSelect = document.getElementById('product-section');
+
+    if (source === 'code' && nameInput && !nameInput.value) {
+      nameInput.value = match.name || '';
+    }
+    if (source === 'name' && codeInput && !codeInput.value && match.code) {
+      codeInput.value = match.code;
+    }
+    if (providerInput && (!providerInput.value || providerInput.value === '')) {
+      providerInput.value = match.provider || '';
+    }
+    if (sectionSelect && match.section) {
+      sectionSelect.value = match.section;
+    }
+
+    if (match.measureType) {
+      const isKg = match.measureType === 'kilogramos' || match.measureType === 'kg';
+      document.querySelectorAll('input[name="measure"]').forEach(r => {
+        r.checked = isKg ? r.value === 'kilogramos' : r.value === 'unidades';
+      });
+      updateQuantityInputRules(match.measureType);
+    }
+
+    // Actualizar badge de código
+    updateCodeBadge(document.getElementById('product-code')?.value);
+
+    if (matchHint) {
+      matchHint.classList.remove('hidden');
+      matchHint.textContent = `✓ Coincidencia: "${match.name}" (${match.provider || 'Sin proveedor'})`;
+    }
+  } else {
+    if (matchHint) matchHint.classList.add('hidden');
+  }
+}
+
+/**
+ * Actualiza el indicador visual de PLU vs EAN en el input de código
+ */
+export function updateCodeBadge(code) {
+  const badge = document.getElementById('product-code-type-badge');
+  if (!badge) return;
+
+  const info = store.formatCodeInfo(code);
+  if (info.type === 'PLU') {
+    badge.textContent = 'Tipo: PLU (1-6 dígitos)';
+    badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-purple-950/60 border border-purple-500/40 text-purple-300';
+  } else if (info.type === 'EAN') {
+    badge.textContent = 'Tipo: EAN (Código Largo)';
+    badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/40 text-cyan-300';
+  } else {
+    badge.textContent = '1-6: PLU | 7+: EAN';
+    badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-surface border border-accent/30 text-text-secondary';
+  }
+}
 
 export function openAddProductForm(productId = null) {
   editingProductId = productId;
   const form = document.getElementById('product-form');
   const title = document.getElementById('add-product-title');
   const btnDelete = document.getElementById('btn-delete-product');
+  const matchHint = document.getElementById('catalog-match-hint');
+  if (matchHint) matchHint.classList.add('hidden');
 
   if (!form) return;
+
+  updateCatalogDatalists();
 
   if (productId) {
     const product = store.getProduct(productId);
@@ -267,24 +471,24 @@ export function openAddProductForm(productId = null) {
     if (btnDelete) btnDelete.classList.remove('hidden');
 
     document.getElementById('product-name').value = product.name || '';
-    document.getElementById('product-code').value = product.plu || '';
+    document.getElementById('product-code').value = product.plu || product.code || '';
+    document.getElementById('product-provider').value = product.provider || product.proveedor || '';
     document.getElementById('product-expiry').value = product.expiryDate || '';
     document.getElementById('product-section').value = product.section || currentSection;
     document.getElementById('product-notes').value = product.notes || '';
 
+    const cantidadVal = (product.cantidad !== undefined && product.cantidad !== null) ? product.cantidad : (product.quantity || '');
     const qtyInput = document.getElementById('product-quantity');
-    if (qtyInput) {
-      qtyInput.value = (product.quantity !== undefined && product.quantity !== null && product.quantity !== '') ? product.quantity : '';
-    }
+    if (qtyInput) qtyInput.value = cantidadVal;
 
     const isKg = product.measureType === 'kilogramos' || product.measureType === 'kg';
-    const unitEl = document.getElementById('product-quantity-unit');
-    if (unitEl) unitEl.textContent = isKg ? 'Kg' : 'Uds';
-
     const measureRadios = form.querySelectorAll('input[name="measure"]');
     measureRadios.forEach(radio => {
       radio.checked = isKg ? radio.value === 'kilogramos' : radio.value === 'unidades';
     });
+
+    updateQuantityInputRules(product.measureType);
+    updateCodeBadge(product.plu || product.code);
   } else {
     form.reset();
     if (title) title.textContent = 'Agregar Producto';
@@ -292,12 +496,18 @@ export function openAddProductForm(productId = null) {
 
     const qtyInput = document.getElementById('product-quantity');
     if (qtyInput) qtyInput.value = '';
-    const unitEl = document.getElementById('product-quantity-unit');
-    if (unitEl) unitEl.textContent = 'Uds';
 
     // Preseleccionar sección actual
     const sectionSelect = document.getElementById('product-section');
     if (sectionSelect) sectionSelect.value = currentSection;
+
+    // Medida por defecto: Unidades
+    const measureRadios = form.querySelectorAll('input[name="measure"]');
+    measureRadios.forEach(radio => {
+      radio.checked = radio.value === 'unidades';
+    });
+    updateQuantityInputRules('unidades');
+    updateCodeBadge('');
 
     // Fecha por defecto: hoy + 3 días
     const defaultDate = new Date();
@@ -318,32 +528,56 @@ export function openAddProductForm(productId = null) {
 export function saveProductFromForm() {
   const name = document.getElementById('product-name').value.trim();
   const plu = document.getElementById('product-code').value.trim();
+  const provider = document.getElementById('product-provider').value.trim();
   const expiryDate = document.getElementById('product-expiry').value;
   const section = document.getElementById('product-section').value;
   const notes = document.getElementById('product-notes').value.trim();
-  const quantityRaw = document.getElementById('product-quantity') ? document.getElementById('product-quantity').value : '';
-  const quantity = quantityRaw !== '' ? Number(quantityRaw) : 0;
+  const quantityRaw = document.getElementById('product-quantity').value;
 
   const selectedMeasure = document.querySelector('input[name="measure"]:checked');
   const measureType = selectedMeasure ? selectedMeasure.value : 'unidades';
+  const isKg = measureType === 'kilogramos' || measureType === 'kg';
 
+  // 1. Validar Nombre
   if (!name) {
     showToast('Ingresa el nombre del producto', 'warning');
+    document.getElementById('product-name')?.focus();
     return false;
   }
 
+  // 2. Validar Fecha
   if (!expiryDate) {
     showToast('Selecciona la fecha de vencimiento', 'warning');
+    document.getElementById('product-expiry')?.focus();
+    return false;
+  }
+
+  // 3. Validar Campo OBLIGATORIO de Cantidad / Peso
+  if (quantityRaw === '' || isNaN(Number(quantityRaw)) || Number(quantityRaw) <= 0) {
+    showToast('El campo Cantidad / Peso es obligatorio y debe ser mayor a 0', 'warning');
+    document.getElementById('product-quantity')?.focus();
+    return false;
+  }
+
+  const cantidad = Number(quantityRaw);
+
+  // Si es Unidades: rechazar decimales
+  if (!isKg && !Number.isInteger(cantidad)) {
+    showToast('Para Unidades debes ingresar números enteros (sin decimales)', 'warning');
+    document.getElementById('product-quantity')?.focus();
     return false;
   }
 
   const productData = {
     name,
     plu,
+    provider,
+    proveedor: provider,
     expiryDate,
     section,
     measureType,
-    quantity,
+    cantidad: cantidad,
+    quantity: cantidad,
     notes
   };
 
@@ -352,10 +586,13 @@ export function saveProductFromForm() {
     showToast('Producto actualizado correctamente', 'success');
   } else {
     store.addProduct(productData);
-    showToast('Producto agregado con éxito', 'success');
+    showToast('Producto guardado en inventario', 'success');
   }
 
-  // Si se cambió de sección, asegurar que el tab coincida
+  // Actualizar datalists del catálogo maestro
+  updateCatalogDatalists();
+
+  // Cambiar a la sección del producto y mostrar inventario
   setSection(section);
   showView('view-inventory');
   return true;
@@ -377,17 +614,13 @@ export function promptDeleteProduct(productId) {
     nameEl.textContent = `¿Seguro que deseas eliminar "${product.name}"? Esta acción no se puede deshacer.`;
   }
 
-  if (modal) {
-    modal.classList.remove('hidden');
-  }
+  if (modal) modal.classList.remove('hidden');
 }
 
 export function closeDeleteConfirm() {
   productToDeleteId = null;
   const modal = document.getElementById('modal-confirm-delete');
-  if (modal) {
-    modal.classList.add('hidden');
-  }
+  if (modal) modal.classList.add('hidden');
 }
 
 export function executeDeleteProduct() {
@@ -414,15 +647,16 @@ export async function openScanner() {
 
   try {
     await scanner.startScanner(video, (code) => {
-      // Código detectado
       const codeInput = document.getElementById('product-code');
       if (codeInput) {
         codeInput.value = code;
+        updateCodeBadge(code);
+        handleCatalogAutocomplete(code, 'code');
       }
       closeScanner();
-      showToast(`Código capturado: ${code}`, 'success');
+      const codeInfo = store.formatCodeInfo(code);
+      showToast(`${codeInfo.label || 'Código'} capturado`, 'success');
 
-      // Feedback háptico si está soportado
       if (navigator.vibrate) {
         navigator.vibrate(100);
       }
@@ -438,13 +672,11 @@ export async function openScanner() {
 export function closeScanner() {
   scanner.stopScanner();
   const modal = document.getElementById('modal-scanner');
-  if (modal) {
-    modal.classList.add('hidden');
-  }
+  if (modal) modal.classList.add('hidden');
 }
 
 // ============================================================
-// MÓDULO DE PEDIR PRECIOS
+// MÓDULO DE PEDIR PRECIOS & FESTIVOS
 // ============================================================
 
 export function renderPedirPrecios() {
@@ -474,13 +706,13 @@ export function renderPedirPrecios() {
     if (isTodayPriceDay) {
       dayStatusEl.textContent = 'Día programado para solicitud de precios';
       dayBadgeEl.textContent = '¡Día de Pedir!';
-      dayBadgeEl.className = 'text-xs font-bold px-3 py-1.5 rounded-full bg-exp-green/20 text-exp-green';
+      dayBadgeEl.className = 'text-xs font-bold px-3 py-1.5 rounded-full bg-exp-green/20 text-exp-green border border-exp-green/30';
     } else {
       const nextDate = store.getNextPriceRequestDay(today, settings.mondayHoliday);
       const nextDayName = daysOfWeek[nextDate.getDay()];
       dayStatusEl.textContent = `Próximo pedido: ${nextDayName} (${formatDateDisplay(nextDate.toISOString().split('T')[0])})`;
       dayBadgeEl.textContent = 'No programado';
-      dayBadgeEl.className = 'text-xs font-bold px-3 py-1.5 rounded-full bg-accent/30 text-text-secondary';
+      dayBadgeEl.className = 'text-xs font-bold px-3 py-1.5 rounded-full bg-accent/30 text-text-secondary border border-accent/40';
     }
   }
 
@@ -539,27 +771,47 @@ export function renderPedirPrecios() {
     const sinPrecioAyer = !yReq || !yReq.priceGiven;
 
     const alertBadges = {
-      ok: 'bg-exp-green/20 text-exp-green',
-      warning: 'bg-exp-yellow/20 text-exp-yellow',
-      urgent: 'bg-exp-orange/20 text-exp-orange',
-      critical: 'bg-exp-red/20 text-exp-red'
+      ok: 'bg-exp-green/20 text-exp-green border-exp-green/30',
+      warning: 'bg-exp-yellow/20 text-exp-yellow border-exp-yellow/30',
+      urgent: 'bg-exp-orange/20 text-exp-orange border-exp-orange/30',
+      critical: 'bg-exp-red/20 text-exp-red border-exp-red/30'
     };
     const badgeClass = alertBadges[alertLevel] || alertBadges.warning;
-    const unitLabel = p.measureType === 'kilogramos' || p.measureType === 'kg' ? 'Kg' : 'Uds';
+
+    const isKg = p.measureType === 'kilogramos' || p.measureType === 'kg';
+    const unitLabel = isKg ? 'kg' : 'uds';
+    const stepVal = isKg ? 'any' : '1';
+    const stockActual = (p.cantidad !== undefined && p.cantidad !== null) ? p.cantidad : (p.quantity || 0);
+
+    // Diferenciación inteligente PLU / EAN
+    const codeInfo = store.formatCodeInfo(p.plu || p.code);
+    let codeBadge = '';
+    if (codeInfo.type === 'PLU') {
+      codeBadge = `<span class="font-mono text-[11px] font-bold text-purple-300 bg-purple-950/40 px-1.5 py-0.5 rounded">PLU: ${escapeHtml(codeInfo.code)}</span>`;
+    } else if (codeInfo.type === 'EAN') {
+      codeBadge = `<span class="font-mono text-[11px] font-bold text-cyan-300 bg-cyan-950/40 px-1.5 py-0.5 rounded">EAN: ${escapeHtml(codeInfo.code)}</span>`;
+    }
+
+    const isAuto = p.section === 'autoservicio';
+    const secBadge = isAuto
+      ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">🛒 Autoservicio</span>`
+      : `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">🥩 Atendida</span>`;
 
     return `
       <div class="pedir-card bg-surface-light rounded-xl p-4 border border-accent/20 shadow-md" data-product-id="${p.id}">
         <div class="flex items-start justify-between mb-2">
           <div class="flex-1 min-w-0 pr-2">
-            <h3 class="font-semibold text-sm text-white truncate">${escapeHtml(p.name)}</h3>
-            <p class="text-xs text-text-secondary mt-0.5">
-              <span class="capitalize text-action/90 font-medium">${p.section}</span>
-              ${p.plu ? ` · PLU: ${escapeHtml(p.plu)}` : ''}
-              · Existencia: <strong class="text-white">${p.quantity !== undefined && p.quantity !== null && p.quantity !== '' ? p.quantity : 0} ${unitLabel}</strong>
-              ${sinPrecioAyer ? ' · <span class="text-exp-red font-medium">⚠️ Sin precio ayer</span>' : ''}
+            <div class="flex items-center gap-1.5 mb-1">
+              ${secBadge}
+              ${codeBadge}
+            </div>
+            <h3 class="font-bold text-sm text-white truncate">${escapeHtml(p.name)}</h3>
+            <p class="text-xs text-text-secondary mt-1 flex items-center gap-2">
+              <span>Existencia: <strong class="text-white">${stockActual} ${unitLabel}</strong></span>
+              ${sinPrecioAyer ? '<span class="text-exp-red font-bold">⚠️ Sin precio ayer</span>' : ''}
             </p>
           </div>
-          <span class="text-xs px-2.5 py-1 rounded-full font-bold ${badgeClass}">
+          <span class="text-xs px-2.5 py-1 rounded-full font-bold border ${badgeClass}">
             ${days <= 0 ? 'Vence HOY' : `${days} días`}
           </span>
         </div>
@@ -569,25 +821,25 @@ export function renderPedirPrecios() {
             <span class="text-xs text-text-secondary font-medium mr-1">Pedir:</span>
             <input
               type="number"
-              step="any"
+              step="${stepVal}"
               min="0"
-              placeholder="${p.quantity || 0}"
+              placeholder="${stockActual}"
               value="${quantity !== undefined && quantity !== null ? quantity : ''}"
               data-product-id="${p.id}"
-              class="pedir-quantity w-24 bg-surface rounded-lg px-3 py-2 text-sm text-white placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/30"
+              class="pedir-quantity w-24 bg-surface rounded-lg px-3 py-2 text-sm text-white placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/30 font-semibold"
             >
-            <span class="text-xs text-text-secondary font-medium">${unitLabel}</span>
+            <span class="text-xs text-text-secondary font-bold">${unitLabel}</span>
           </div>
 
-          <label class="flex items-center gap-2 cursor-pointer bg-surface/60 px-3 py-2 rounded-lg border border-accent/30 active:scale-95 transition-transform">
+          <label class="flex items-center gap-2 cursor-pointer bg-surface/70 px-3.5 py-2 rounded-lg border border-accent/30 active:scale-95 transition-transform">
             <input
               type="checkbox"
               data-product-id="${p.id}"
               ${isRequested ? 'checked' : ''}
               class="pedir-checkbox w-4 h-4 rounded bg-surface border-accent/40 text-action accent-action focus:ring-action/50"
             >
-            <span class="text-xs font-semibold ${isRequested ? 'text-exp-green' : 'text-text-secondary'}">
-              ${isRequested ? '✓ Pedido' : 'Pedir'}
+            <span class="text-xs font-bold ${isRequested ? 'text-exp-green' : 'text-text-secondary'}">
+              ${isRequested ? '✓ Precio Pedido' : 'Marcar Pedido'}
             </span>
           </label>
         </div>
@@ -637,7 +889,7 @@ export function handlePedirStatusChange(productId, isRequested) {
     });
   }
 
-  showToast(isRequested ? 'Marcado como precio pedido' : 'Desmarcado', 'info');
+  showToast(isRequested ? 'Precio marcado como pedido' : 'Precio desmarcado', 'info');
   renderPedirPrecios();
 }
 
@@ -655,7 +907,6 @@ export function generateAndShareReport() {
   let reportText = `🥩 *EL ROTADOR - PEDIDO DE PRECIOS*\n`;
   reportText += `📅 Fecha: ${formatDateDisplay(todayStr)}\n\n`;
 
-  // Agrupar por sección
   const sections = ['autoservicio', 'atendida'];
 
   sections.forEach(sec => {
@@ -665,18 +916,21 @@ export function generateAndShareReport() {
       secProducts.forEach((p, index) => {
         const days = store.getDaysUntilExpiry(p.expiryDate);
         const req = requests.find(r => r.productId === p.id);
-        const stock = (p.quantity !== undefined && p.quantity !== null && p.quantity !== '') ? p.quantity : '0';
+        const stock = (p.cantidad !== undefined && p.cantidad !== null) ? p.cantidad : (p.quantity || '0');
         const qtyToOrder = (req && req.quantity !== undefined && req.quantity !== null && req.quantity !== '') ? req.quantity : stock;
         const unit = p.measureType === 'kilogramos' || p.measureType === 'kg' ? 'kg' : 'uds';
-        const status = req && req.priceRequested ? '✅' : '⏳';
+        const status = req && req.priceRequested ? '✅ PEDIDO' : '⏳ PENDIENTE';
 
-        reportText += `${index + 1}. ${p.name} ${p.plu ? `[${p.plu}]` : ''} - Stock: ${stock} ${unit} | A pedir: ${qtyToOrder} ${unit} (Vence en ${days}d) ${status}\n`;
+        const codeInfo = store.formatCodeInfo(p.plu || p.code);
+        const codeText = codeInfo.code ? `[${codeInfo.type || 'COD'}: ${codeInfo.code}]` : '';
+
+        reportText += `${index + 1}. ${p.name} ${codeText}\n`;
+        reportText += `   Stock: ${stock} ${unit} | A pedir: ${qtyToOrder} ${unit} | Vence en ${days}d -> ${status}\n`;
       });
       reportText += '\n';
     }
   });
 
-  // Intentar compartir con Web Share API, sino copiar al portapapeles
   if (navigator.share) {
     navigator.share({
       title: 'Pedido de Precios - El Rotador',
@@ -697,7 +951,6 @@ function copyToClipboard(text) {
       showToast('No se pudo copiar el reporte', 'error');
     });
   } else {
-    // Fallback con textarea
     const textarea = document.createElement('textarea');
     textarea.value = text;
     document.body.appendChild(textarea);
@@ -706,6 +959,76 @@ function copyToClipboard(text) {
     document.body.removeChild(textarea);
     showToast('Reporte copiado al portapapeles', 'success');
   }
+}
+
+// ============================================================
+// MODAL: CATÁLOGO MAESTRO
+// ============================================================
+
+export function openCatalogModal() {
+  const modal = document.getElementById('modal-catalog');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  renderCatalogModalList('');
+}
+
+export function closeCatalogModal() {
+  const modal = document.getElementById('modal-catalog');
+  if (modal) modal.classList.add('hidden');
+}
+
+export function renderCatalogModalList(searchFilter = '') {
+  const container = document.getElementById('catalog-modal-list');
+  if (!container) return;
+
+  const catalog = store.getMasterCatalog();
+  const filter = (searchFilter || '').toLowerCase().trim();
+
+  const filtered = catalog.filter(item => {
+    if (!filter) return true;
+    return (item.name || '').toLowerCase().includes(filter) ||
+           (item.code || '').toLowerCase().includes(filter) ||
+           (item.provider || '').toLowerCase().includes(filter);
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-8 text-text-secondary text-sm">
+        No se encontraron productos en el catálogo maestro
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(item => {
+    const codeInfo = store.formatCodeInfo(item.code);
+    let codeBadge = '';
+    if (codeInfo.type === 'PLU') {
+      codeBadge = `<span class="font-mono text-[10px] font-bold text-purple-300 bg-purple-950/40 px-1.5 py-0.5 rounded border border-purple-500/30">PLU: ${escapeHtml(codeInfo.code)}</span>`;
+    } else if (codeInfo.type === 'EAN') {
+      codeBadge = `<span class="font-mono text-[10px] font-bold text-cyan-300 bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-500/30">EAN: ${escapeHtml(codeInfo.code)}</span>`;
+    }
+
+    const isKg = item.measureType === 'kilogramos' || item.measureType === 'kg';
+
+    return `
+      <div class="p-3 bg-surface rounded-xl border border-accent/20 flex items-center justify-between gap-3">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <span class="text-xs font-bold text-white truncate">${escapeHtml(item.name)}</span>
+            ${codeBadge}
+          </div>
+          <p class="text-[11px] text-text-secondary truncate">
+            🏭 ${escapeHtml(item.provider || 'Sin proveedor')} · <span class="text-text-primary">${isKg ? 'Kilogramos' : 'Unidades'}</span>
+          </p>
+        </div>
+        <button class="btn-use-catalog-item px-2.5 py-1 rounded bg-accent/40 hover:bg-accent text-white text-xs font-semibold border border-accent/50"
+          data-name="${escapeHtml(item.name)}" data-code="${escapeHtml(item.code || '')}" data-provider="${escapeHtml(item.provider || '')}" data-measure="${item.measureType || 'unidades'}" data-section="${item.section || 'autoservicio'}">
+          Usar
+        </button>
+      </div>
+    `;
+  }).join('');
 }
 
 // ============================================================
@@ -719,6 +1042,11 @@ export function renderSettings() {
     const autoCount = products.filter(p => p.section === 'autoservicio').length;
     const atendidaCount = products.filter(p => p.section === 'atendida').length;
     countEl.textContent = `Productos almacenados: ${products.length} (Autoservicio: ${autoCount} | Atendida: ${atendidaCount})`;
+  }
+
+  const catalogCountEl = document.getElementById('master-catalog-count');
+  if (catalogCountEl) {
+    catalogCountEl.textContent = `${store.getMasterCatalog().length} productos registrados`;
   }
 }
 
@@ -744,6 +1072,7 @@ export function importBackupFile(file) {
     try {
       store.importData(e.target.result);
       showToast('Datos restaurados correctamente', 'success');
+      updateCatalogDatalists();
       renderProductList();
       renderSettings();
     } catch (err) {
@@ -792,7 +1121,7 @@ export function showToast(message, type = 'info') {
   if (toastTimeout) clearTimeout(toastTimeout);
   toastTimeout = setTimeout(() => {
     toastEl.classList.add('hidden');
-  }, 3000);
+  }, 3200);
 }
 
 // ============================================================

@@ -1,6 +1,6 @@
 /**
  * app.js - Punto de entrada principal para El Rotador
- * Inicializa PWA, Service Worker, y enlaza todos los eventos del DOM
+ * Inicializa PWA, Service Worker, Catálogo Maestro y enlaza todos los eventos del DOM
  */
 
 import * as store from './store.js';
@@ -16,15 +16,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // 3. Cargar datos de muestra si es la primera vez que se abre la app
   initializeSampleData();
 
-  // 4. Configurar todos los event listeners
+  // 4. Cargar datalists del Catálogo Maestro
+  ui.updateCatalogDatalists();
+
+  // 5. Configurar todos los event listeners
   setupNavigationEvents();
   setupInventoryEvents();
   setupProductFormEvents();
   setupScannerEvents();
   setupPedirPreciosEvents();
   setupSettingsEvents();
+  setupCatalogModalEvents();
 
-  // 5. Mostrar vista inicial
+  // 6. Mostrar vista inicial (Autoservicio con distinción cromática azul)
   ui.showView('view-inventory');
   ui.setSection('autoservicio');
 });
@@ -48,7 +52,7 @@ function registerServiceWorker() {
 
 /**
  * Inserta datos de muestra si el inventario está completamente vacío,
- * permitiendo al usuario probar la app de inmediato.
+ * permitiendo al usuario probar la app de inmediato con cantidades numéricas y códigos PLU/EAN.
  */
 function initializeSampleData() {
   const existing = store.getAllProducts();
@@ -63,78 +67,86 @@ function initializeSampleData() {
     };
 
     const sampleProducts = [
-      // AUTOSERVICIO
+      // AUTOSERVICIO (Azul)
       {
         name: 'Bife de Chorizo Premium',
-        plu: '7791234567890',
+        plu: '7791234567890', // EAN (13 dígitos)
+        provider: 'Frigorífico Central',
         expiryDate: addDays(1), // Crítico (1 día)
         section: 'autoservicio',
         measureType: 'kilogramos',
-        quantity: 14.5,
+        cantidad: 14.5,
         notes: 'Bandeja envasada al vacío - Lote A1'
       },
       {
         name: 'Pechuga de Pollo Fresca',
-        plu: '7792345678901',
+        plu: '7792345678901', // EAN (13 dígitos)
+        provider: 'Avícola San Marcos',
         expiryDate: addDays(3), // Urgente (3 días)
         section: 'autoservicio',
         measureType: 'kilogramos',
-        quantity: 22.0,
+        cantidad: 22.0,
         notes: 'Proveedor Avícola Central'
       },
       {
         name: 'Hamburguesas Caseras x4',
-        plu: '7793456789012',
+        plu: '7793456789012', // EAN (13 dígitos)
+        provider: 'Elaboración Propia',
         expiryDate: addDays(5), // Precaución (5 días)
         section: 'autoservicio',
         measureType: 'unidades',
-        quantity: 30,
+        cantidad: 30, // Entero
         notes: 'Elaboración del lunes'
       },
       {
         name: 'Colita de Cuadril Envasada',
-        plu: '7794567890123',
+        plu: '7794567890123', // EAN (13 dígitos)
+        provider: 'Frigorífico Pampeano',
         expiryDate: addDays(10), // OK (>6 días)
         section: 'autoservicio',
         measureType: 'kilogramos',
-        quantity: 8.7,
+        cantidad: 8.75,
         notes: 'Lote B14'
       },
-      // ATENDIDA
+      // ATENDIDA (Ámbar)
       {
         name: 'Milanesas de Carne Preparadas',
-        plu: '4011',
+        plu: '4011', // PLU (4 dígitos)
+        provider: 'Elaboración Mostrador',
         expiryDate: addDays(0), // Vence HOY (Crítico)
         section: 'atendida',
         measureType: 'kilogramos',
-        quantity: 18.2,
+        cantidad: 18.5,
         notes: 'Mostrador principal'
       },
       {
         name: 'Chorizo Bombón Especial',
-        plu: '4022',
+        plu: '4022', // PLU (4 dígitos)
+        provider: 'Embutidos Artesanales',
         expiryDate: addDays(2), // Urgente (2 días)
         section: 'atendida',
         measureType: 'kilogramos',
-        quantity: 12.0,
+        cantidad: 12.0,
         notes: 'Lote embutido artesanal'
       },
       {
         name: 'Matambre de Cerdo',
-        plu: '4033',
+        plu: '4033', // PLU (4 dígitos)
+        provider: 'Cabaña Porcina',
         expiryDate: addDays(6), // Precaución (6 días)
         section: 'atendida',
         measureType: 'kilogramos',
-        quantity: 9.4,
+        cantidad: 9.3,
         notes: 'Cámara 2'
       },
       {
         name: 'Asado de Tira Especial',
-        plu: '4044',
-        expiryDate: addDays(14), // OK
+        plu: '4044', // PLU (4 dígitos)
+        provider: 'Frigorífico Central',
+        expiryDate: addDays(14), // OK (>6 días)
         section: 'atendida',
         measureType: 'kilogramos',
-        quantity: 35.0,
+        cantidad: 35.0,
         notes: 'Media res fresca'
       }
     ];
@@ -161,7 +173,7 @@ function setupNavigationEvents() {
  * Eventos de la vista de inventario (tabs, filtros, búsqueda, click en tarjeta)
  */
 function setupInventoryEvents() {
-  // Tabs: Autoservicio / Atendida
+  // Tabs: Autoservicio (Azul) / Atendida (Ámbar)
   document.querySelectorAll('.inventory-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       const section = tab.getAttribute('data-section');
@@ -229,21 +241,41 @@ function setupProductFormEvents() {
       ui.saveProductFromForm();
     });
 
-    // Actualizar indicador de unidad al cambiar entre Unidades y Kilogramos
+    // Actualizar reglas de cantidad al alternar entre Unidades y Kilogramos
     form.querySelectorAll('input[name="measure"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
-        const unitEl = document.getElementById('product-quantity-unit');
-        if (unitEl) {
-          unitEl.textContent = e.target.value === 'kilogramos' ? 'Kg' : 'Uds';
-        }
+        ui.updateQuantityInputRules(e.target.value);
       });
+    });
+  }
+
+  // Autocompletado del Catálogo Maestro al tipear código
+  const codeInput = document.getElementById('product-code');
+  if (codeInput) {
+    codeInput.addEventListener('input', (e) => {
+      ui.updateCodeBadge(e.target.value);
+      ui.handleCatalogAutocomplete(e.target.value, 'code');
+    });
+    codeInput.addEventListener('change', (e) => {
+      ui.handleCatalogAutocomplete(e.target.value, 'code');
+    });
+  }
+
+  // Autocompletado del Catálogo Maestro al tipear o seleccionar nombre
+  const nameInput = document.getElementById('product-name');
+  if (nameInput) {
+    nameInput.addEventListener('input', (e) => {
+      ui.handleCatalogAutocomplete(e.target.value, 'name');
+    });
+    nameInput.addEventListener('change', (e) => {
+      ui.handleCatalogAutocomplete(e.target.value, 'name');
     });
   }
 
   // Botones de cancelar
   const btnCancelTop = document.getElementById('btn-cancel-product');
   const btnCancelBottom = document.getElementById('btn-cancel-product-bottom');
-  
+
   const handleCancel = () => {
     ui.showView('view-inventory');
   };
@@ -299,15 +331,16 @@ function setupScannerEvents() {
 }
 
 /**
- * Eventos del módulo de pedir precios
+ * Eventos del módulo de pedir precios y festivos
  */
 function setupPedirPreciosEvents() {
-  // Toggle lunes festivo
+  // Toggle lunes festivo (traslada tarea de pedir del lunes al martes)
   const toggleHoliday = document.getElementById('toggle-holiday');
   if (toggleHoliday) {
     toggleHoliday.addEventListener('change', (e) => {
       store.saveSettings({ mondayHoliday: e.target.checked });
       ui.renderPedirPrecios();
+      ui.showToast(e.target.checked ? 'Regla festivo activa: Pedido trasladado a martes' : 'Regla normal: Lunes y jueves', 'info');
     });
   }
 
@@ -322,7 +355,7 @@ function setupPedirPreciosEvents() {
   // Delegación de inputs de cantidad y checkboxes de pedido
   const pedirList = document.getElementById('pedir-product-list');
   if (pedirList) {
-    // Cambio en input de cantidad
+    // Cambio en input de cantidad a pedir
     pedirList.addEventListener('input', (e) => {
       if (e.target.classList.contains('pedir-quantity')) {
         const productId = e.target.getAttribute('data-product-id');
@@ -372,10 +405,77 @@ function setupSettingsEvents() {
     fileInput.addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         ui.importBackupFile(e.target.files[0]);
-        // Reset file input para permitir subir el mismo archivo nuevamente si se desea
         fileInput.value = '';
       }
     });
   }
 }
 
+/**
+ * Eventos del Modal del Catálogo Maestro
+ */
+function setupCatalogModalEvents() {
+  const btnOpen = document.getElementById('btn-open-catalog-modal');
+  const btnClose = document.getElementById('btn-close-catalog-modal');
+  const searchInput = document.getElementById('catalog-modal-search');
+  const listContainer = document.getElementById('catalog-modal-list');
+
+  if (btnOpen) {
+    btnOpen.addEventListener('click', () => {
+      ui.openCatalogModal();
+    });
+  }
+
+  if (btnClose) {
+    btnClose.addEventListener('click', () => {
+      ui.closeCatalogModal();
+    });
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      ui.renderCatalogModalList(e.target.value);
+    });
+  }
+
+  if (listContainer) {
+    listContainer.addEventListener('click', (e) => {
+      const btnUse = e.target.closest('.btn-use-catalog-item');
+      if (btnUse) {
+        const name = btnUse.getAttribute('data-name');
+        const code = btnUse.getAttribute('data-code');
+        const provider = btnUse.getAttribute('data-provider');
+        const measure = btnUse.getAttribute('data-measure');
+        const section = btnUse.getAttribute('data-section');
+
+        ui.closeCatalogModal();
+        ui.openAddProductForm(null);
+
+        // Rellenar formulario con los datos del catálogo
+        const nameInput = document.getElementById('product-name');
+        const codeInput = document.getElementById('product-code');
+        const providerInput = document.getElementById('product-provider');
+        const sectionSelect = document.getElementById('product-section');
+
+        if (nameInput) nameInput.value = name || '';
+        if (codeInput) codeInput.value = code || '';
+        if (providerInput) providerInput.value = provider || '';
+        if (sectionSelect) sectionSelect.value = section || 'autoservicio';
+
+        const isKg = measure === 'kilogramos' || measure === 'kg';
+        document.querySelectorAll('input[name="measure"]').forEach(r => {
+          r.checked = isKg ? r.value === 'kilogramos' : r.value === 'unidades';
+        });
+        ui.updateQuantityInputRules(measure);
+        ui.updateCodeBadge(code);
+
+        // Enfocar el campo obligatorio de cantidad
+        setTimeout(() => {
+          document.getElementById('product-quantity')?.focus();
+        }, 150);
+
+        ui.showToast(`Cargado desde catálogo: "${name}"`, 'success');
+      }
+    });
+  }
+}

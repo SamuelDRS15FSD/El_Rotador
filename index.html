@@ -34,6 +34,11 @@
             'exp-yellow': '#f39c12',
             'exp-orange': '#e67e22',
             'exp-red': '#e74c3c',
+            // Diferenciación cromática de secciones
+            'sec-auto': '#3b82f6',
+            'sec-auto-dark': '#1e3a8a',
+            'sec-atend': '#f59e0b',
+            'sec-atend-dark': '#78350f',
           }
         }
       }
@@ -75,7 +80,7 @@
 
     /* Modal backdrop */
     .modal-backdrop {
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.75);
       backdrop-filter: blur(4px);
     }
 
@@ -96,9 +101,17 @@
   <!-- ============================================================ -->
   <!-- TOP HEADER BAR                                                -->
   <!-- ============================================================ -->
-  <header id="app-header" class="bg-surface sticky top-0 z-30 px-4 py-3 flex items-center justify-between shadow-lg">
-    <h1 class="text-lg font-bold tracking-wide">🥩 El Rotador</h1>
-    <span id="header-date" class="text-xs text-text-secondary"></span>
+  <header id="app-header" class="bg-surface sticky top-0 z-30 px-4 py-3 flex items-center justify-between shadow-lg border-b border-accent/30">
+    <div class="flex items-center gap-2">
+      <span class="text-xl">🥩</span>
+      <h1 class="text-base font-bold tracking-wide">El Rotador</h1>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="active-section-indicator" class="text-[11px] font-bold px-2 py-0.5 rounded-full border">
+        AUTOSERVICIO
+      </span>
+      <span id="header-date" class="text-xs text-text-secondary font-medium"></span>
+    </div>
   </header>
 
   <!-- ============================================================ -->
@@ -111,15 +124,17 @@
     <!-- ========================================================== -->
     <section id="view-inventory" class="view active min-h-full">
 
-      <!-- Sub-tabs: Autoservicio / Atendida -->
-      <div id="inventory-tabs" class="flex bg-surface sticky top-0 z-20 border-b border-accent/30">
+      <!-- Sub-tabs: Autoservicio (Azul) / Atendida (Ámbar) con fuerte distinción cromática -->
+      <div id="inventory-tabs" class="flex bg-surface sticky top-0 z-20 border-b border-accent/40 shadow-sm">
         <button data-section="autoservicio"
-          class="inventory-tab flex-1 py-3 text-sm font-semibold text-center transition-colors border-b-2 border-action text-action">
-          AUTOSERVICIO
+          class="inventory-tab flex-1 py-3 text-xs sm:text-sm font-bold text-center transition-all flex items-center justify-center gap-1.5 border-b-2">
+          <span>🛒</span>
+          <span>AUTOSERVICIO</span>
         </button>
         <button data-section="atendida"
-          class="inventory-tab flex-1 py-3 text-sm font-semibold text-center transition-colors border-b-2 border-transparent text-text-secondary">
-          ATENDIDA
+          class="inventory-tab flex-1 py-3 text-xs sm:text-sm font-bold text-center transition-all flex items-center justify-center gap-1.5 border-b-2">
+          <span>🥩</span>
+          <span>ATENDIDA</span>
         </button>
       </div>
 
@@ -131,52 +146,34 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <input id="inventory-search" type="search" placeholder="Buscar producto, PLU o código..."
-            class="w-full bg-surface-light rounded-lg pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-action/50">
+          <input id="inventory-search" type="search" placeholder="Buscar por nombre, PLU, EAN o lote..."
+            class="w-full bg-surface-light rounded-lg pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20">
         </div>
       </div>
 
       <!-- Sort / Filter chips -->
       <div id="inventory-filters" class="px-4 pb-2 flex gap-2 overflow-x-auto">
         <button data-sort="date"
-          class="sort-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-action/20 text-action border border-action/30">
+          class="sort-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-action/20 text-action border border-action/30 font-medium">
           Por vencimiento
         </button>
         <button data-sort="name"
-          class="sort-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-surface-light text-text-secondary border border-transparent">
+          class="sort-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-surface-light text-text-secondary border border-transparent font-medium">
           Por nombre
         </button>
         <button data-filter="expired"
-          class="filter-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-surface-light text-text-secondary border border-transparent">
+          class="filter-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-surface-light text-text-secondary border border-transparent font-medium">
           Vencidos
         </button>
         <button data-filter="today"
-          class="filter-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-surface-light text-text-secondary border border-transparent">
-          Hoy
+          class="filter-chip whitespace-nowrap text-xs px-3 py-1.5 rounded-full bg-surface-light text-text-secondary border border-transparent font-medium">
+          Vence hoy
         </button>
       </div>
 
       <!-- Products List -->
       <div id="product-list" class="px-4 space-y-3 pb-6">
-        <!-- Product cards will be rendered here by JS -->
-        <!-- Example card structure for reference (rendered by JS):
-        <div class="product-card bg-surface-light rounded-xl p-4 border-l-4 border-exp-green" data-id="...">
-          <div class="flex justify-between items-start">
-            <div class="flex-1 min-w-0">
-              <h3 class="font-semibold text-sm truncate">Nombre Producto</h3>
-              <p class="text-xs text-text-secondary mt-0.5">PLU: 12345</p>
-            </div>
-            <div class="text-right ml-3">
-              <span class="text-xs font-bold px-2 py-1 rounded-full bg-exp-green/20 text-exp-green">8 días</span>
-            </div>
-          </div>
-          <div class="flex justify-between items-center mt-2 text-xs text-text-secondary">
-            <span>Vence: 15/01/2027</span>
-            <span>Unidades</span>
-          </div>
-          <p class="text-xs text-text-secondary mt-1 italic truncate">Lote: ABC-123</p>
-        </div>
-        -->
+        <!-- Renderizado dinámicamente por JS -->
       </div>
 
       <!-- Empty state -->
@@ -185,13 +182,13 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
             d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
         </svg>
-        <p class="text-text-secondary text-sm">No hay productos en esta sección</p>
-        <p class="text-text-secondary/60 text-xs mt-1">Toca el botón + para agregar</p>
+        <p class="text-text-secondary text-sm font-medium">No hay productos en esta sección</p>
+        <p class="text-text-secondary/60 text-xs mt-1">Toca el botón + para registrar uno</p>
       </div>
 
       <!-- FAB: Add Product -->
       <button id="fab-add-product"
-        class="fixed bottom-24 right-5 z-20 w-14 h-14 bg-action hover:bg-action-hover rounded-full shadow-lg shadow-action/30 flex items-center justify-center transition-transform active:scale-90"
+        class="fixed bottom-24 right-5 z-20 w-14 h-14 bg-action hover:bg-action-hover rounded-full shadow-lg shadow-action/40 flex items-center justify-center transition-transform active:scale-90"
         aria-label="Agregar producto">
         <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
@@ -204,9 +201,12 @@
     <!-- ========================================================== -->
     <section id="view-add-product" class="view min-h-full">
       <div class="px-4 pt-4 pb-6">
-        <!-- Title -->
-        <div class="flex items-center justify-between mb-6">
-          <h2 id="add-product-title" class="text-lg font-bold">Agregar Producto</h2>
+        <!-- Title & Cancel -->
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h2 id="add-product-title" class="text-lg font-bold">Agregar Producto</h2>
+            <p id="catalog-match-hint" class="text-xs text-exp-green font-medium hidden">✓ Coincidencia con Catálogo Maestro</p>
+          </div>
           <button id="btn-cancel-product" class="text-text-secondary hover:text-white transition-colors p-1"
             aria-label="Cancelar">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,25 +215,38 @@
           </button>
         </div>
 
-        <form id="product-form" class="space-y-5" novalidate>
-          <!-- Nombre del producto -->
+        <form id="product-form" class="space-y-4" novalidate>
+          <!-- Nombre del producto con datalist del Catálogo Maestro -->
           <div>
-            <label for="product-name" class="block text-sm font-medium text-text-secondary mb-1.5">Nombre del
-              producto</label>
-            <input id="product-name" type="text" required autocomplete="off" placeholder="Ej: Milanesa de pollo"
+            <div class="flex justify-between items-center mb-1.5">
+              <label for="product-name" class="block text-sm font-medium text-text-secondary">
+                Nombre del producto <span class="text-action">*</span>
+              </label>
+              <span class="text-[11px] text-text-secondary/70">Autocompleta con catálogo</span>
+            </div>
+            <input id="product-name" type="text" list="catalogo-nombres" required autocomplete="off"
+              placeholder="Ej: Bife de Chorizo o Milanesa"
               class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20">
+            <datalist id="catalogo-nombres"></datalist>
           </div>
 
-          <!-- PLU / Código de Barras + Scanner -->
+          <!-- PLU / Código de Barras + Scanner + Datalist -->
           <div>
-            <label for="product-code" class="block text-sm font-medium text-text-secondary mb-1.5">PLU / Código de
-              Barras</label>
+            <div class="flex justify-between items-center mb-1.5">
+              <label for="product-code" class="block text-sm font-medium text-text-secondary">
+                Código (PLU o EAN)
+              </label>
+              <span id="product-code-type-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-surface border border-accent/30 text-text-secondary">
+                1-6: PLU | 7+: EAN
+              </span>
+            </div>
             <div class="flex gap-2">
-              <input id="product-code" type="text" inputmode="numeric" autocomplete="off"
-                placeholder="Ej: 4011 o 7790001"
-                class="flex-1 bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20">
+              <input id="product-code" type="text" list="catalogo-codigos" inputmode="numeric" autocomplete="off"
+                placeholder="PLU (ej: 4011) o EAN (ej: 7791234567890)"
+                class="flex-1 bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20 font-mono">
+              <datalist id="catalogo-codigos"></datalist>
               <button id="btn-open-scanner" type="button"
-                class="bg-accent hover:bg-accent/80 rounded-lg px-4 flex items-center justify-center transition-colors"
+                class="bg-accent hover:bg-accent/80 rounded-lg px-4 flex items-center justify-center transition-colors shadow-sm"
                 aria-label="Escanear código de barras">
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -243,66 +256,80 @@
             </div>
           </div>
 
+          <!-- Proveedor (Opcional) -->
+          <div>
+            <label for="product-provider" class="block text-sm font-medium text-text-secondary mb-1.5">Proveedor (Opcional)</label>
+            <input id="product-provider" type="text" autocomplete="off" placeholder="Ej: Frigorífico Central"
+              class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20">
+          </div>
+
           <!-- Fecha de Vencimiento -->
           <div>
-            <label for="product-expiry" class="block text-sm font-medium text-text-secondary mb-1.5">Fecha de
-              Vencimiento</label>
+            <label for="product-expiry" class="block text-sm font-medium text-text-secondary mb-1.5">
+              Fecha de Vencimiento <span class="text-action">*</span>
+            </label>
             <input id="product-expiry" type="date" required
               class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20">
           </div>
 
-          <!-- Sección -->
+          <!-- Sección con distinción visual -->
           <div>
             <label for="product-section" class="block text-sm font-medium text-text-secondary mb-1.5">Sección</label>
             <select id="product-section"
-              class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20 appearance-none">
-              <option value="autoservicio">Autoservicio</option>
-              <option value="atendida">Atendida</option>
+              class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20 appearance-none font-semibold">
+              <option value="autoservicio">🛒 Autoservicio</option>
+              <option value="atendida">🥩 Atendida</option>
             </select>
           </div>
 
           <!-- Tipo de Medida -->
           <div>
-            <label for="product-measure" class="block text-sm font-medium text-text-secondary mb-1.5">Tipo de
-              Medida</label>
+            <label for="product-measure" class="block text-sm font-medium text-text-secondary mb-1.5">Tipo de Medida</label>
             <div id="product-measure" class="flex gap-3">
               <label class="flex-1">
                 <input type="radio" name="measure" value="unidades" class="sr-only peer" checked>
                 <div
-                  class="peer-checked:bg-action/20 peer-checked:border-action peer-checked:text-action bg-surface-light border border-accent/20 rounded-lg py-3 text-center text-sm font-medium cursor-pointer transition-colors">
-                  Unidades
+                  class="peer-checked:bg-sec-auto/20 peer-checked:border-sec-auto peer-checked:text-sec-auto bg-surface-light border border-accent/20 rounded-lg py-3 text-center text-sm font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5">
+                  <span>📦</span>
+                  <span>Unidades</span>
                 </div>
               </label>
               <label class="flex-1">
                 <input type="radio" name="measure" value="kilogramos" class="sr-only peer">
                 <div
-                  class="peer-checked:bg-action/20 peer-checked:border-action peer-checked:text-action bg-surface-light border border-accent/20 rounded-lg py-3 text-center text-sm font-medium cursor-pointer transition-colors">
-                  Kilogramos
+                  class="peer-checked:bg-sec-atend/20 peer-checked:border-sec-atend peer-checked:text-sec-atend bg-surface-light border border-accent/20 rounded-lg py-3 text-center text-sm font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5">
+                  <span>⚖️</span>
+                  <span>Kilogramos</span>
                 </div>
               </label>
             </div>
           </div>
 
-          <!-- Cantidad / Peso -->
+          <!-- Campo OBLIGATORIO de Cantidad / Peso -->
           <div>
-            <label for="product-quantity" class="block text-sm font-medium text-text-secondary mb-1.5">Cantidad / Peso</label>
-            <div class="relative">
-              <input
-                id="product-quantity"
-                type="number"
-                step="any"
-                min="0"
-                placeholder="Ej: 5 o 12.5"
-                class="w-full bg-surface-light rounded-lg pl-4 pr-14 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20"
-              >
-              <span id="product-quantity-unit" class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-text-secondary">Uds</span>
+            <div class="flex justify-between items-center mb-1.5">
+              <label for="product-quantity" class="block text-sm font-medium text-text-secondary">
+                Cantidad / Peso <span class="text-action font-bold">*</span>
+              </label>
+              <span id="product-quantity-type-label" class="text-[11px] font-semibold text-sec-auto">Solo enteros (piezas)</span>
             </div>
+            <div class="relative">
+              <input id="product-quantity" type="number" step="1" min="0.001" required placeholder="Ej: 10"
+                class="w-full bg-surface-light rounded-lg pl-4 pr-16 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20 font-semibold">
+              <span id="product-quantity-unit"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-white bg-surface px-2.5 py-1 rounded border border-accent/30">
+                Uds
+              </span>
+            </div>
+            <p id="product-quantity-hint" class="text-[11px] text-text-secondary/70 mt-1">
+              Para unidades se requieren números enteros (ej. 1, 5, 20).
+            </p>
           </div>
 
           <!-- Notas / Lote -->
           <div>
             <label for="product-notes" class="block text-sm font-medium text-text-secondary mb-1.5">Notas / Lote</label>
-            <textarea id="product-notes" rows="2" placeholder="Ej: Lote ABC-123, proveedor X"
+            <textarea id="product-notes" rows="2" placeholder="Ej: Lote ABC-123, envasado el lunes..."
               class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20 resize-none"></textarea>
           </div>
 
@@ -336,58 +363,45 @@
           <h2 class="text-lg font-bold mb-2">Pedir Precios</h2>
 
           <!-- Day indicator -->
-          <div id="pedir-day-indicator" class="bg-surface-light rounded-xl p-4 border border-accent/20">
+          <div id="pedir-day-indicator" class="bg-surface-light rounded-xl p-4 border border-accent/20 shadow-md">
             <div class="flex items-center justify-between">
               <div>
                 <p id="pedir-day-name" class="text-sm font-semibold">—</p>
                 <p id="pedir-day-status" class="text-xs text-text-secondary mt-0.5">Cargando...</p>
               </div>
-              <span id="pedir-day-badge"
-                class="text-xs font-bold px-3 py-1.5 rounded-full bg-accent/30 text-text-secondary">—</span>
+              <span id="pedir-day-badge" class="text-xs font-bold px-3 py-1.5 rounded-full bg-accent/30 text-text-secondary">—</span>
             </div>
 
-            <!-- Holiday toggle -->
+            <!-- Holiday toggle (Regla festivo lunes -> martes) -->
             <div class="flex items-center justify-between mt-4 pt-3 border-t border-accent/20">
-              <label for="toggle-holiday" class="text-xs text-text-secondary">Lunes festivo (pedir el martes)</label>
+              <div>
+                <label for="toggle-holiday" class="text-xs font-medium text-text-primary block">Lunes festivo</label>
+                <span class="text-[11px] text-text-secondary">Traslada el pedido al día martes</span>
+              </div>
               <label class="relative inline-flex items-center cursor-pointer">
                 <input id="toggle-holiday" type="checkbox" class="sr-only peer">
                 <div
-                  class="w-10 h-5 bg-surface rounded-full peer-checked:bg-action/60 peer-focus:ring-2 peer-focus:ring-action/30 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-5">
-                </div>
+                  class="w-11 h-6 bg-surface rounded-full peer-checked:bg-action peer-focus:ring-2 peer-focus:ring-action/30 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform peer-checked:after:translate-x-5"></div>
               </label>
             </div>
           </div>
         </div>
 
-        <!-- Filter: Sin precio -->
-        <div class="flex items-center gap-3 mb-4">
-          <label for="filter-sin-precio" class="flex items-center gap-2 cursor-pointer">
+        <!-- Filter: Sin precio del día anterior -->
+        <div class="bg-surface-light rounded-xl p-3 border border-accent/20 mb-4">
+          <label for="filter-sin-precio" class="flex items-center gap-3 cursor-pointer">
             <input id="filter-sin-precio" type="checkbox"
-              class="w-4 h-4 rounded bg-surface-light border-accent/30 text-action focus:ring-action/50">
-            <span class="text-sm text-text-secondary">Mostrar solo "Sin precio" del día anterior</span>
+              class="w-4 h-4 rounded bg-surface border-accent/30 text-action focus:ring-action/50 accent-action">
+            <div>
+              <span class="text-xs font-semibold text-text-primary block">Filtrar: Sin precio del día anterior</span>
+              <span class="text-[11px] text-text-secondary">Muestra únicamente los productos que NO recibieron precio en el corte anterior</span>
+            </div>
           </label>
         </div>
 
         <!-- Products to order list -->
         <div id="pedir-product-list" class="space-y-3">
-          <!-- Rendered by JS. Example structure:
-          <div class="pedir-card bg-surface-light rounded-xl p-4 border border-accent/20" data-id="...">
-            <div class="flex items-start justify-between mb-2">
-              <div class="flex-1 min-w-0">
-                <h3 class="font-semibold text-sm truncate">Producto</h3>
-                <p class="text-xs text-text-secondary">Vence en 3 días</p>
-              </div>
-              <span class="text-xs px-2 py-1 rounded-full bg-exp-orange/20 text-exp-orange">3 días</span>
-            </div>
-            <div class="flex items-center gap-3 mt-3">
-              <input type="number" placeholder="Cantidad" class="flex-1 bg-surface rounded-lg px-3 py-2 text-sm ...">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" class="w-4 h-4 rounded ...">
-                <span class="text-xs text-text-secondary">Precio pedido</span>
-              </label>
-            </div>
-          </div>
-          -->
+          <!-- Renderizado por JS -->
         </div>
 
         <!-- Empty state -->
@@ -396,13 +410,14 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
           </svg>
-          <p class="text-text-secondary text-sm">No hay productos por pedir precios</p>
+          <p class="text-text-secondary text-sm font-medium">No hay productos por pedir precios</p>
+          <p class="text-text-secondary/60 text-xs mt-1">Los productos con ≤6 días de vencimiento aparecerán aquí</p>
         </div>
 
         <!-- Generate Report Button -->
         <div class="mt-6">
           <button id="btn-generate-report"
-            class="w-full py-3.5 rounded-xl bg-action hover:bg-action-hover text-white text-sm font-bold shadow-lg shadow-action/20 transition-colors active:scale-[0.98] flex items-center justify-center gap-2">
+            class="w-full py-3.5 rounded-xl bg-action hover:bg-action-hover text-white text-sm font-bold shadow-lg shadow-action/30 transition-colors active:scale-[0.98] flex items-center justify-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -420,6 +435,31 @@
       <div class="px-4 pt-4 pb-6">
         <h2 class="text-lg font-bold mb-6">Configuración</h2>
 
+        <!-- Catálogo Maestro Section -->
+        <div class="space-y-4 mb-8">
+          <h3 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Base de Datos Interna</h3>
+          <div class="bg-surface-light rounded-xl p-4 border border-accent/20 shadow-md">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-sec-auto/20 text-sec-auto flex items-center justify-center font-bold">
+                  📚
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-white">Catálogo Maestro</p>
+                  <p id="master-catalog-count" class="text-xs text-text-secondary mt-0.5">12 productos registrados</p>
+                </div>
+              </div>
+              <button id="btn-open-catalog-modal"
+                class="px-3 py-1.5 rounded-lg bg-accent hover:bg-accent/80 text-white text-xs font-semibold transition-colors">
+                Ver Catálogo
+              </button>
+            </div>
+            <p class="text-xs text-text-secondary leading-relaxed">
+              Autocompleta nombre, código y proveedor al registrar o escanear productos. Se actualiza automáticamente al guardar nuevos artículos.
+            </p>
+          </div>
+        </div>
+
         <!-- Backup Section -->
         <div class="space-y-4">
           <h3 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Respaldo de Datos</h3>
@@ -435,7 +475,7 @@
             </div>
             <div class="text-left">
               <p class="text-sm font-semibold">Exportar datos (JSON)</p>
-              <p class="text-xs text-text-secondary mt-0.5">Descarga una copia de todos tus productos</p>
+              <p class="text-xs text-text-secondary mt-0.5">Descarga copia de productos y catálogo maestro</p>
             </div>
           </button>
 
@@ -466,17 +506,15 @@
               <span class="text-2xl">🥩</span>
               <div>
                 <p class="text-sm font-bold">El Rotador</p>
-                <p id="app-version" class="text-xs text-text-secondary">v1.0.0</p>
+                <p id="app-version" class="text-xs text-text-secondary">v1.2.0 (Mobile-First PWA)</p>
               </div>
             </div>
             <p class="text-xs text-text-secondary leading-relaxed">
-              Control de vencimientos para supermercado y carnicería. Gestiona la rotación de productos, controla fechas
-              de vencimiento y genera reportes de pedidos de precios.
+              Control estricto de vencimientos y gestión de precios para carnicerías y supermercados.
             </p>
-            <div class="mt-3 pt-3 border-t border-accent/20">
+            <div class="mt-3 pt-3 border-t border-accent/20 space-y-1">
               <p id="settings-product-count" class="text-xs text-text-secondary">Productos almacenados: —</p>
-              <p id="settings-storage-info" class="text-xs text-text-secondary mt-1">Almacenamiento: IndexedDB / Local
-              </p>
+              <p id="settings-storage-info" class="text-xs text-text-secondary">Almacenamiento: LocalStorage (Offline)</p>
             </div>
           </div>
         </div>
@@ -486,13 +524,45 @@
   </main>
 
   <!-- ============================================================ -->
+  <!-- MODAL: CATÁLOGO MAESTRO                                       -->
+  <!-- ============================================================ -->
+  <div id="modal-catalog" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="modal-backdrop absolute inset-0"></div>
+    <div class="relative bg-surface rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl border border-accent/30 overflow-hidden">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-4 py-3 bg-surface-light border-b border-accent/20">
+        <div class="flex items-center gap-2">
+          <span>📚</span>
+          <h3 class="text-sm font-bold text-white">Catálogo Maestro de Productos</h3>
+        </div>
+        <button id="btn-close-catalog-modal" class="text-text-secondary hover:text-white p-1" aria-label="Cerrar catálogo">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Search in catalog -->
+      <div class="p-3 border-b border-accent/20">
+        <input id="catalog-modal-search" type="search" placeholder="Filtrar catálogo por nombre, código o proveedor..."
+          class="w-full bg-surface rounded-lg px-3 py-2 text-xs text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-action/50 border border-accent/30">
+      </div>
+
+      <!-- Catalog List -->
+      <div id="catalog-modal-list" class="flex-1 overflow-y-auto p-4 space-y-2">
+        <!-- Rellenado por JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
   <!-- MODAL: SCANNER                                                -->
   <!-- ============================================================ -->
   <div id="modal-scanner" class="fixed inset-0 z-50 hidden">
     <div class="modal-backdrop absolute inset-0"></div>
     <div class="relative flex flex-col h-full bg-primary">
       <!-- Scanner Header -->
-      <div class="flex items-center justify-between px-4 py-3 bg-surface">
+      <div class="flex items-center justify-between px-4 py-3 bg-surface border-b border-accent/30">
         <h3 class="text-sm font-bold">Escanear Código de Barras</h3>
         <button id="btn-close-scanner" class="text-text-secondary hover:text-white p-1 transition-colors"
           aria-label="Cerrar escáner">
@@ -504,32 +574,25 @@
 
       <!-- Camera Preview -->
       <div class="flex-1 relative overflow-hidden bg-black">
-        <video id="scanner-video" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline
-          muted></video>
+        <video id="scanner-video" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline muted></video>
 
         <!-- Scan overlay guides -->
         <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <!-- Darkened edges -->
           <div class="absolute inset-0 bg-black/40"></div>
-          <!-- Clear center window -->
           <div class="relative w-72 h-40 border-2 border-action rounded-2xl z-10"
             style="box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);">
-            <!-- Corner accents -->
             <div class="absolute -top-0.5 -left-0.5 w-6 h-6 border-t-4 border-l-4 border-action rounded-tl-2xl"></div>
             <div class="absolute -top-0.5 -right-0.5 w-6 h-6 border-t-4 border-r-4 border-action rounded-tr-2xl"></div>
-            <div class="absolute -bottom-0.5 -left-0.5 w-6 h-6 border-b-4 border-l-4 border-action rounded-bl-2xl">
-            </div>
-            <div class="absolute -bottom-0.5 -right-0.5 w-6 h-6 border-b-4 border-r-4 border-action rounded-br-2xl">
-            </div>
-            <!-- Scan line animation -->
+            <div class="absolute -bottom-0.5 -left-0.5 w-6 h-6 border-b-4 border-l-4 border-action rounded-bl-2xl"></div>
+            <div class="absolute -bottom-0.5 -right-0.5 w-6 h-6 border-b-4 border-r-4 border-action rounded-br-2xl"></div>
             <div class="absolute left-2 right-2 h-0.5 bg-action/60 top-1/2 animate-pulse"></div>
           </div>
         </div>
 
         <!-- Scanner status -->
         <div class="absolute bottom-6 left-0 right-0 text-center z-20">
-          <p id="scanner-status" class="text-sm text-white/80 bg-black/50 inline-block px-4 py-2 rounded-full">
-            Apunte al código de barras
+          <p id="scanner-status" class="text-sm text-white/80 bg-black/60 inline-block px-4 py-2 rounded-full border border-white/20">
+            Apunte la cámara al código de barras
           </p>
         </div>
       </div>
@@ -568,9 +631,8 @@
   <!-- TOAST NOTIFICATION                                            -->
   <!-- ============================================================ -->
   <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 hidden">
-    <div
-      class="bg-surface border border-accent/30 rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 min-w-[200px]">
-      <span id="toast-icon" class="text-lg">✓</span>
+    <div class="bg-surface border border-accent/40 rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 min-w-[220px]">
+      <span id="toast-icon" class="text-lg font-bold">✓</span>
       <p id="toast-message" class="text-sm font-medium">Mensaje</p>
     </div>
   </div>
@@ -578,7 +640,7 @@
   <!-- ============================================================ -->
   <!-- BOTTOM NAVIGATION BAR                                         -->
   <!-- ============================================================ -->
-  <nav id="bottom-nav" class="bottom-nav fixed bottom-0 left-0 right-0 z-30 bg-surface border-t border-accent/30">
+  <nav id="bottom-nav" class="bottom-nav fixed bottom-0 left-0 right-0 z-30 bg-surface border-t border-accent/30 shadow-2xl">
     <div class="flex items-center justify-around h-16 max-w-lg mx-auto">
       <!-- Inventario -->
       <button data-view="view-inventory"
