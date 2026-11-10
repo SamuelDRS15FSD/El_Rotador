@@ -372,6 +372,14 @@ function setupPedirPreciosEvents() {
     });
   }
 
+  // Botón generar reporte en PDF (únicamente productos con precio pedido)
+  const btnExportPdf = document.getElementById('btn-export-pdf');
+  if (btnExportPdf) {
+    btnExportPdf.addEventListener('click', () => {
+      ui.generatePDFReport();
+    });
+  }
+
   // Botón generar / compartir reporte
   const btnReport = document.getElementById('btn-generate-report');
   if (btnReport) {

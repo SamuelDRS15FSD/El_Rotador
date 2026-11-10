@@ -48,6 +48,10 @@
   <!-- ZXing Barcode Scanner -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
+  <!-- jsPDF & AutoTable para Generación de Reportes en PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
   <style>
     /* Scrollbar styling */
     ::-webkit-scrollbar {
@@ -256,11 +260,25 @@
             </div>
           </div>
 
-          <!-- Proveedor (Opcional) -->
+          <!-- Proveedor (OBLIGATORIO) -->
           <div>
-            <label for="product-provider" class="block text-sm font-medium text-text-secondary mb-1.5">Proveedor (Opcional)</label>
-            <input id="product-provider" type="text" autocomplete="off" placeholder="Ej: Frigorífico Central"
+            <div class="flex justify-between items-center mb-1.5">
+              <label for="product-provider" class="block text-sm font-medium text-text-secondary">
+                Proveedor <span class="text-action font-bold">*</span>
+              </label>
+              <span class="text-[11px] text-text-secondary/70">Campo obligatorio</span>
+            </div>
+            <input id="product-provider" type="text" list="catalogo-proveedores" required autocomplete="off" placeholder="Ej: Frigorífico Central"
               class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20">
+            <datalist id="catalogo-proveedores">
+              <option value="Frigorífico Central"></option>
+              <option value="Avícola San Marcos"></option>
+              <option value="Cabaña Porcina"></option>
+              <option value="Frigorífico Pampeano"></option>
+              <option value="Elaboración Propia"></option>
+              <option value="Embutidos Artesanales"></option>
+              <option value="Distribuidora La Pradera"></option>
+            </datalist>
           </div>
 
           <!-- Fecha de Vencimiento -->
@@ -414,15 +432,24 @@
           <p class="text-text-secondary/60 text-xs mt-1">Los productos con ≤6 días de vencimiento aparecerán aquí</p>
         </div>
 
-        <!-- Generate Report Button -->
-        <div class="mt-6">
+        <!-- Botones de Acción para Reporte y PDF -->
+        <div class="mt-6 space-y-3">
+          <button id="btn-export-pdf"
+            class="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-600 via-action to-rose-600 hover:brightness-110 text-white text-sm font-bold shadow-lg shadow-action/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-red-400/30">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Generar Reporte en PDF (Precios Pedidos)
+          </button>
+
           <button id="btn-generate-report"
-            class="w-full py-3.5 rounded-xl bg-action hover:bg-action-hover text-white text-sm font-bold shadow-lg shadow-action/30 transition-colors active:scale-[0.98] flex items-center justify-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            class="w-full py-3 rounded-xl bg-surface-light hover:bg-surface text-text-primary text-xs font-semibold border border-accent/30 transition-colors active:scale-[0.98] flex items-center justify-center gap-2">
+            <svg class="w-4 h-4 text-action" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
             </svg>
-            Generar / Compartir Reporte
+            Compartir / Copiar Texto (WhatsApp)
           </button>
         </div>
       </div>

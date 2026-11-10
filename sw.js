@@ -1,5 +1,5 @@
 // Service Worker - El Rotador PWA
-const CACHE_NAME = 'el-rotador-v1';
+const CACHE_NAME = 'el-rotador-v2';
 
 // Archivos a pre-cachear
 const PRECACHE_URLS = [
@@ -16,7 +16,8 @@ const PRECACHE_URLS = [
 // Dominios CDN permitidos para cachear
 const CDN_HOSTS = [
   'cdn.tailwindcss.com',
-  'unpkg.com'
+  'unpkg.com',
+  'cdnjs.cloudflare.com'
 ];
 
 // --- Evento INSTALL ---

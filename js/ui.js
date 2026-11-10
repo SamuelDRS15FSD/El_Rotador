@@ -354,6 +354,7 @@ export function updateCatalogDatalists() {
   const catalog = store.getMasterCatalog();
   const datalistNames = document.getElementById('catalogo-nombres');
   const datalistCodes = document.getElementById('catalogo-codigos');
+  const datalistProviders = document.getElementById('catalogo-proveedores');
 
   if (datalistNames) {
     datalistNames.innerHTML = catalog.map(item => `
@@ -367,6 +368,30 @@ export function updateCatalogDatalists() {
       .map(item => `
         <option value="${escapeHtml(item.code)}">${escapeHtml(item.name)}</option>
       `).join('');
+  }
+
+  if (datalistProviders) {
+    // Proveedores únicos del catálogo
+    const providers = Array.from(new Set(
+      catalog.map(item => (item.provider || '').trim()).filter(Boolean)
+    ));
+    // Agregar proveedores comunes si no están
+    const defaultProviders = [
+      'Frigorífico Central',
+      'Avícola San Marcos',
+      'Cabaña Porcina',
+      'Frigorífico Pampeano',
+      'Elaboración Propia',
+      'Embutidos Artesanales',
+      'Distribuidora La Pradera'
+    ];
+    defaultProviders.forEach(dp => {
+      if (!providers.includes(dp)) providers.push(dp);
+    });
+
+    datalistProviders.innerHTML = providers.map(p => `
+      <option value="${escapeHtml(p)}"></option>
+    `).join('');
   }
 
   // Actualizar contador en ajustes
@@ -545,14 +570,21 @@ export function saveProductFromForm() {
     return false;
   }
 
-  // 2. Validar Fecha
+  // 2. Validar Proveedor OBLIGATORIO
+  if (!provider) {
+    showToast('El campo Proveedor es obligatorio', 'warning');
+    document.getElementById('product-provider')?.focus();
+    return false;
+  }
+
+  // 3. Validar Fecha
   if (!expiryDate) {
     showToast('Selecciona la fecha de vencimiento', 'warning');
     document.getElementById('product-expiry')?.focus();
     return false;
   }
 
-  // 3. Validar Campo OBLIGATORIO de Cantidad / Peso
+  // 4. Validar Campo OBLIGATORIO de Cantidad / Peso
   if (quantityRaw === '' || isNaN(Number(quantityRaw)) || Number(quantityRaw) <= 0) {
     showToast('El campo Cantidad / Peso es obligatorio y debe ser mayor a 0', 'warning');
     document.getElementById('product-quantity')?.focus();
@@ -959,6 +991,261 @@ function copyToClipboard(text) {
     document.body.removeChild(textarea);
     showToast('Reporte copiado al portapapeles', 'success');
   }
+}
+
+// ============================================================
+// EXPORTACIÓN A PDF (PEDIDO DE PRECIOS)
+// ============================================================
+
+/**
+ * Genera y descarga el Reporte Oficial en PDF de los productos
+ * a los que se les pidió precio, con los campos exactos requeridos:
+ * - Nombre del Producto
+ * - PLU o EAN (según aplique)
+ * - Fecha de Vencimiento
+ * - Cantidad (ingresada manualmente al pedir)
+ * - Proveedor
+ */
+export function generatePDFReport() {
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const settings = store.getSettings();
+  const allProducts = store.getAllProducts();
+  const requests = store.getPriceRequests(todayStr);
+
+  // Filtrar ÚNICAMENTE los productos marcados como precio pedido
+  const requestedItems = [];
+
+  requests.forEach(req => {
+    if (req.priceRequested) {
+      const product = allProducts.find(p => p.id === req.productId);
+      if (product) {
+        const qtyToOrder = (req.quantity !== undefined && req.quantity !== null && req.quantity !== '')
+          ? Number(req.quantity)
+          : (product.cantidad || 0);
+
+        requestedItems.push({
+          product,
+          request: req,
+          cantidadPedida: qtyToOrder
+        });
+      }
+    }
+  });
+
+  if (requestedItems.length === 0) {
+    showToast('No hay productos con "Precio Pedido" marcado hoy. Marca al menos uno para generar el PDF.', 'warning');
+    return;
+  }
+
+  // Ordenar productos: por sección y luego por nombre
+  requestedItems.sort((a, b) => {
+    if (a.product.section !== b.product.section) {
+      return a.product.section.localeCompare(b.product.section);
+    }
+    return (a.product.name || '').localeCompare(b.product.name || '');
+  });
+
+  const formattedDate = formatDateDisplay(todayStr);
+
+  // Comprobar si jsPDF está disponible
+  const jsPDFClass = window.jspdf ? window.jspdf.jsPDF : null;
+
+  if (jsPDFClass) {
+    try {
+      const doc = new jsPDFClass({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Encabezado corporativo oscuro
+      doc.setFillColor(26, 26, 46); // #1a1a2e
+      doc.rect(0, 0, 210, 32, 'F');
+
+      // Título principal
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(15);
+      doc.text('EL ROTADOR - CONTROL DE VENCIMIENTOS', 14, 13);
+
+      // Subtítulo en rojo carnicero
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(233, 69, 96); // #e94560
+      doc.text('REPORTE OFICIAL: PRODUCTOS CON PRECIO PEDIDO', 14, 20);
+
+      // Metadatos
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(180, 180, 195);
+      const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const dayName = dayNames[today.getDay()];
+      const ruleText = settings.mondayHoliday ? 'Corte: Martes (Festivo activado)' : 'Corte: Lunes / Jueves';
+      doc.text(`Fecha: ${dayName}, ${formattedDate}  |  ${ruleText}  |  Total Ítems Pedidos: ${requestedItems.length}`, 14, 27);
+
+      // Construir filas de la tabla con los 5 campos exactos solicitados
+      const tableRows = requestedItems.map((item, index) => {
+        const p = item.product;
+        const isKg = p.measureType === 'kilogramos' || p.measureType === 'kg';
+        const unit = isKg ? 'kg' : 'uds';
+
+        // 1. Nombre del Producto
+        const nombreProducto = p.name || 'Sin nombre';
+
+        // 2. PLU o EAN exclusivo (según aplique, nunca ambos)
+        const codeInfo = store.formatCodeInfo(p.plu || p.code);
+        const codigoDisplay = codeInfo.type ? `${codeInfo.type}: ${codeInfo.code}` : 'Sin código';
+
+        // 3. Fecha de Vencimiento
+        const fechaVencimiento = formatDateDisplay(p.expiryDate);
+
+        // 4. Cantidad (ingresada manualmente al pedir)
+        const cantidadPedir = `${item.cantidadPedida} ${unit}`;
+
+        // 5. Proveedor
+        const proveedor = (p.provider || p.proveedor || 'Sin proveedor').trim();
+
+        // Sección (indicador complementario)
+        const seccion = p.section === 'autoservicio' ? 'Autoservicio' : 'Atendida';
+
+        return [
+          index + 1,
+          nombreProducto,
+          codigoDisplay,
+          fechaVencimiento,
+          cantidadPedir,
+          proveedor,
+          seccion
+        ];
+      });
+
+      // Generar tabla profesional con AutoTable
+      doc.autoTable({
+        startY: 36,
+        head: [['#', 'Nombre del Producto', 'PLU / EAN', 'F. Vencimiento', 'Cantidad a Pedir', 'Proveedor', 'Sección']],
+        body: tableRows,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [233, 69, 96], // #e94560
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 8.5,
+          halign: 'left'
+        },
+        styles: {
+          fontSize: 8,
+          cellPadding: 2.8,
+          valign: 'middle',
+          textColor: [40, 40, 40]
+        },
+        columnStyles: {
+          0: { cellWidth: 7, halign: 'center' },
+          1: { fontStyle: 'bold', cellWidth: 46 },
+          2: { cellWidth: 28, font: 'courier', fontStyle: 'bold' },
+          3: { cellWidth: 23, halign: 'center' },
+          4: { cellWidth: 26, fontStyle: 'bold', halign: 'right' },
+          5: { cellWidth: 38 },
+          6: { cellWidth: 22, fontSize: 7.5 }
+        },
+        alternateRowStyles: {
+          fillColor: [248, 249, 251]
+        },
+        didDrawPage: function (data) {
+          // Pie de página
+          const str = `Página ${doc.internal.getNumberOfPages()}`;
+          doc.setFontSize(8);
+          doc.setTextColor(140, 140, 140);
+          doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 8);
+          doc.text('El Rotador - Sistema de Control de Vencimientos y Precios', doc.internal.pageSize.width - 90, doc.internal.pageSize.height - 8);
+        }
+      });
+
+      const fileName = `Reporte_Precios_Pedidos_${todayStr}.pdf`;
+      doc.save(fileName);
+      showToast('PDF descargado exitosamente', 'success');
+      return;
+    } catch (err) {
+      console.error('Error generando jsPDF:', err);
+    }
+  }
+
+  // Fallback si jsPDF no estuviese cargado por falta de red
+  printPDFReportFallback(requestedItems, formattedDate);
+}
+
+/**
+ * Fallback de impresión nativa en caso de que jsPDF falle
+ */
+function printPDFReportFallback(requestedItems, formattedDate) {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    showToast('Habilita las ventanas emergentes para exportar el reporte', 'warning');
+    return;
+  }
+
+  const rowsHtml = requestedItems.map((item, index) => {
+    const p = item.product;
+    const isKg = p.measureType === 'kilogramos' || p.measureType === 'kg';
+    const unit = isKg ? 'kg' : 'uds';
+    const codeInfo = store.formatCodeInfo(p.plu || p.code);
+    const codeText = codeInfo.type ? `${codeInfo.type}: ${codeInfo.code}` : 'Sin código';
+
+    return `
+      <tr>
+        <td style="text-align:center;">${index + 1}</td>
+        <td><strong>${escapeHtml(p.name)}</strong></td>
+        <td><code>${escapeHtml(codeText)}</code></td>
+        <td style="text-align:center;">${formatDateDisplay(p.expiryDate)}</td>
+        <td style="text-align:right;"><strong>${item.cantidadPedida} ${unit}</strong></td>
+        <td>${escapeHtml(p.provider || p.proveedor || 'Sin proveedor')}</td>
+        <td>${p.section === 'autoservicio' ? 'Autoservicio' : 'Atendida'}</td>
+      </tr>
+    `;
+  }).join('');
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Reporte de Pedido de Precios - El Rotador</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 20px; color: #222; }
+        h1 { color: #1a1a2e; margin-bottom: 2px; }
+        h2 { color: #e94560; margin-top: 0; font-size: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+        th, td { border: 1px solid #ddd; padding: 7px; }
+        th { background: #e94560; color: white; text-align: left; }
+        tr:nth-child(even) { background: #f9f9f9; }
+      </style>
+    </head>
+    <body>
+      <h1>🥩 EL ROTADOR - CONTROL DE VENCIMIENTOS</h1>
+      <h2>REPORTE OFICIAL: PRODUCTOS CON PRECIO PEDIDO (${formattedDate})</h2>
+      <p style="font-size: 12px; color: #666;">Total ítems pedidos: ${requestedItems.length}</p>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nombre del Producto</th>
+            <th>Código (PLU / EAN)</th>
+            <th>F. Vencimiento</th>
+            <th>Cantidad a Pedir</th>
+            <th>Proveedor</th>
+            <th>Sección</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+      <script>
+        window.onload = function() { window.print(); };
+      </script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
 }
 
 // ============================================================
