@@ -31,14 +31,14 @@ PWA (Progressive Web App) diseñada para el control diario de fechas de vencimie
 2. Ve a **Settings → Pages**.
 3. En **Source**, selecciona la rama `main` y la carpeta `/ (root)`.
 4. Haz clic en **Save**.
-5. Accede a la URL generada (ej: `https://tu-usuario.github.io/El_Rotador/`).
+5. Accede a la URL generada: `https://samueldrs15fsd.github.io/El_Rotador/`
 6. En tu dispositivo móvil, abre la URL y selecciona **"Agregar a pantalla de inicio"**.
 
 ### Opción 2: Servidor local
 
 ```bash
 # Clona el repositorio
-git clone https://github.com/tu-usuario/El_Rotador.git
+git clone https://github.com/SamuelDRS15FSD/El_Rotador.git
 cd El_Rotador
 
 # Sirve con cualquier servidor estático, por ejemplo:
