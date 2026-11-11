@@ -99,6 +99,14 @@ function setupNavigationEvents() {
  * Eventos de la vista de inventario (tabs, filtros, búsqueda, click en tarjeta)
  */
 function setupInventoryEvents() {
+  // Botón selector compacto en la barra superior (alterna dinámicamente entre AUT y ATE)
+  const toggleBtn = document.getElementById('btn-toggle-section') || document.getElementById('active-section-indicator');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      ui.toggleSection();
+    });
+  }
+
   // Tabs: Autoservicio (Azul) / Atendida (Ámbar)
   document.querySelectorAll('.inventory-tab').forEach(tab => {
     tab.addEventListener('click', () => {

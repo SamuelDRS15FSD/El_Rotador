@@ -70,7 +70,18 @@ export function updateHeaderDate() {
 // ============================================================
 
 /**
+ * Alterna dinámicamente entre Autoservicio y Atendida desde el botón de la barra superior
+ */
+export function toggleSection() {
+  const nextSection = currentSection === 'autoservicio' ? 'atendida' : 'autoservicio';
+  setSection(nextSection);
+  showView('view-inventory');
+  showToast(nextSection === 'autoservicio' ? 'Sección: Autoservicio (🛒 AUT)' : 'Sección: Atendida (🥩 ATE)', 'info');
+}
+
+/**
  * Cambia la sección activa y actualiza estilos cromáticos:
+ * - Botón de barra superior con abreviaturas: "AUT" (🛒) / "ATE" (🥩)
  * - Autoservicio: Azul / Índigo
  * - Atendida: Ámbar / Dorado
  * @param {'autoservicio'|'atendida'} section
@@ -78,15 +89,19 @@ export function updateHeaderDate() {
 export function setSection(section) {
   currentSection = section;
 
-  // Actualizar indicador en el header
-  const indicator = document.getElementById('active-section-indicator');
-  if (indicator) {
+  // Actualizar botón selector de sección en la barra superior con abreviaturas compactas
+  const toggleBtn = document.getElementById('btn-toggle-section') || document.getElementById('active-section-indicator');
+  if (toggleBtn) {
     if (section === 'autoservicio') {
-      indicator.textContent = '🛒 AUTOSERVICIO';
-      indicator.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm';
+      toggleBtn.innerHTML = `<span>🛒</span><span class="font-extrabold tracking-wider">AUT</span>`;
+      toggleBtn.className = 'text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 hover:bg-blue-500/30 active:scale-95 transition-all flex items-center gap-1 shadow-sm cursor-pointer ml-1';
+      toggleBtn.title = 'Sección: Autoservicio (AUT). Toca para cambiar a Atendida (ATE)';
+      toggleBtn.setAttribute('aria-label', 'Alternar sección: actualmente Autoservicio (AUT)');
     } else {
-      indicator.textContent = '🥩 ATENDIDA';
-      indicator.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm';
+      toggleBtn.innerHTML = `<span>🥩</span><span class="font-extrabold tracking-wider">ATE</span>`;
+      toggleBtn.className = 'text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 active:scale-95 transition-all flex items-center gap-1 shadow-sm cursor-pointer ml-1';
+      toggleBtn.title = 'Sección: Atendida (ATE). Toca para cambiar a Autoservicio (AUT)';
+      toggleBtn.setAttribute('aria-label', 'Alternar sección: actualmente Atendida (ATE)');
     }
   }
 

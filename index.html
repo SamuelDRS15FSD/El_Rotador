@@ -110,15 +110,18 @@
   <!-- ============================================================ -->
   <header id="app-header"
     class="bg-surface sticky top-0 z-30 px-3.5 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between shadow-lg border-b border-accent/30 gap-2">
-    <!-- Lado Izquierdo: Logotipo y Título de App -->
+    <!-- Lado Izquierdo: Logotipo, Título de App y Botón Selector de Sección Compacto (AUT / ATE) -->
     <div class="flex items-center gap-2 min-w-0">
       <span class="text-xl flex-shrink-0">🥩</span>
       <h1 class="text-base font-bold tracking-wide text-white truncate">Rotador</h1>
-      <!-- Indicador de sección: visible en tablets/desktop para evitar colisión en móvil -->
-      <span id="active-section-indicator"
-        class="hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-500/40 text-blue-300 bg-blue-950/40 ml-1 truncate">
-        AUTOSERVICIO
-      </span>
+      <!-- Botón selector de sección compacto: "AUT" (🛒) / "ATE" (🥩) -->
+      <button id="btn-toggle-section" type="button"
+        class="text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 hover:bg-blue-500/30 active:scale-95 transition-all flex items-center gap-1 shadow-sm cursor-pointer ml-1 flex-shrink-0"
+        aria-label="Alternar sección: actualmente Autoservicio (AUT)"
+        title="Sección: Autoservicio (AUT). Toca para cambiar a Atendida (ATE)">
+        <span>🛒</span>
+        <span class="font-extrabold tracking-wider">AUT</span>
+      </button>
     </div>
 
     <!-- Lado Derecho: Indicador Online/Offline + Fecha + Campana con separación generosa -->
