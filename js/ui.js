@@ -976,7 +976,7 @@ export function renderPedirPrecios() {
 
         <div class="flex items-center gap-3 mt-3 pt-3 border-t border-accent/20">
           <div class="flex items-center gap-1.5 flex-1">
-            <span class="text-xs text-text-secondary font-medium mr-1">Pedir:</span>
+            <label class="text-xs text-text-secondary font-medium mr-1">Cantidad:</label>
             <input
               type="number"
               step="${stepVal}"
