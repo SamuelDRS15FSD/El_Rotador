@@ -1,7 +1,7 @@
 {
-  "name": "El Rotador - Control de Vencimientos",
-  "short_name": "El Rotador",
-  "description": "Control de fechas de vencimiento y gestión de precios para supermercado",
+  "name": "Rotador - Control de Vencimientos",
+  "short_name": "Rotador",
+  "description": "Control de fechas de vencimiento y gestión de precios para supermercado y carnicería",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1a1a2e",

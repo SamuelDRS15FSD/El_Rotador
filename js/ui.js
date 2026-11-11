@@ -1,5 +1,5 @@
 /**
- * ui.js - Módulo de interfaz/renderizado para El Rotador
+ * ui.js - Módulo de interfaz/renderizado para Rotador
  * Totalmente sincronizado con index.html y store.js
  * Incluye distinción cromática, diferenciación PLU/EAN, validación de cantidad y Catálogo Maestro
  */
@@ -296,6 +296,9 @@ export function renderProductList() {
       </div>
     `;
   }).join('');
+
+  // Actualizar conteo de alertas prioritarias en la campana
+  updateAlertBadge();
 }
 
 // ============================================================
@@ -878,6 +881,9 @@ export function renderPedirPrecios() {
       </div>
     `;
   }).join('');
+
+  // Actualizar conteo de alertas prioritarias en la campana
+  updateAlertBadge();
 }
 
 export function handlePedirQuantityChange(productId, quantityVal) {
@@ -936,7 +942,7 @@ export function generateAndShareReport() {
     return;
   }
 
-  let reportText = `🥩 *EL ROTADOR - PEDIDO DE PRECIOS*\n`;
+  let reportText = `🥩 *ROTADOR - PEDIDO DE PRECIOS*\n`;
   reportText += `📅 Fecha: ${formatDateDisplay(todayStr)}\n\n`;
 
   const sections = ['autoservicio', 'atendida'];
@@ -965,7 +971,7 @@ export function generateAndShareReport() {
 
   if (navigator.share) {
     navigator.share({
-      title: 'Pedido de Precios - El Rotador',
+      title: 'Pedido de Precios - Rotador',
       text: reportText
     }).catch(() => {
       copyToClipboard(reportText);
@@ -1067,7 +1073,7 @@ export function generatePDFReport() {
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(15);
-      doc.text('EL ROTADOR - CONTROL DE VENCIMIENTOS', 14, 13);
+      doc.text('ROTADOR - CONTROL DE VENCIMIENTOS', 14, 13);
 
       // Subtítulo en rojo carnicero
       doc.setFontSize(10);
@@ -1157,7 +1163,7 @@ export function generatePDFReport() {
           doc.setFontSize(8);
           doc.setTextColor(140, 140, 140);
           doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 8);
-          doc.text('El Rotador - Sistema de Control de Vencimientos y Precios', doc.internal.pageSize.width - 90, doc.internal.pageSize.height - 8);
+          doc.text('Rotador - Sistema de Control de Vencimientos y Precios', doc.internal.pageSize.width - 90, doc.internal.pageSize.height - 8);
         }
       });
 
@@ -1208,7 +1214,7 @@ function printPDFReportFallback(requestedItems, formattedDate) {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Reporte de Pedido de Precios - El Rotador</title>
+      <title>Reporte de Pedido de Precios - Rotador</title>
       <style>
         body { font-family: Arial, sans-serif; margin: 20px; color: #222; }
         h1 { color: #1a1a2e; margin-bottom: 2px; }
@@ -1220,7 +1226,7 @@ function printPDFReportFallback(requestedItems, formattedDate) {
       </style>
     </head>
     <body>
-      <h1>🥩 EL ROTADOR - CONTROL DE VENCIMIENTOS</h1>
+      <h1>🥩 ROTADOR - CONTROL DE VENCIMIENTOS</h1>
       <h2>REPORTE OFICIAL: PRODUCTOS CON PRECIO PEDIDO (${formattedDate})</h2>
       <p style="font-size: 12px; color: #666;">Total ítems pedidos: ${requestedItems.length}</p>
       <table>
@@ -1344,7 +1350,7 @@ export function exportBackup() {
   const a = document.createElement('a');
   const dateStr = new Date().toISOString().split('T')[0];
   a.href = url;
-  a.download = `el-rotador-backup-${dateStr}.json`;
+  a.download = `rotador-backup-${dateStr}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1430,4 +1436,263 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// ============================================================
+// SISTEMA DE ALERTAS Y NOTIFICACIONES DE PRODUCTOS PRIORITARIOS
+// ============================================================
+
+export function updateAlertBadge() {
+  const badge = document.getElementById('badge-alerts-count');
+  if (!badge) return;
+  const urgentItems = store.getPriorityProducts();
+  const count = urgentItems.length;
+  if (count > 0) {
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+export function showPriorityAlertsModal() {
+  const modal = document.getElementById('modal-priority-alerts');
+  if (!modal) return;
+  renderPriorityAlertsList();
+  modal.classList.remove('hidden');
+}
+
+export function closePriorityAlertsModal() {
+  const modal = document.getElementById('modal-priority-alerts');
+  if (modal) modal.classList.add('hidden');
+}
+
+export function renderPriorityAlertsList() {
+  const list = document.getElementById('priority-alerts-list');
+  const subtitle = document.getElementById('priority-alerts-subtitle');
+  if (!list) return;
+
+  const urgentItems = store.getPriorityProducts();
+
+  if (subtitle) {
+    subtitle.textContent = urgentItems.length > 0
+      ? `${urgentItems.length} producto(s) crítico(s) o urgente(s)`
+      : 'No hay alertas urgentes pendientes';
+  }
+
+  if (urgentItems.length === 0) {
+    list.innerHTML = `
+      <div class="text-center py-8 text-text-secondary">
+        <div class="text-3xl mb-2">🎉</div>
+        <p class="text-xs font-semibold text-white">¡Todo bajo control!</p>
+        <p class="text-[11px] mt-1">No hay productos que venzan en los próximos 3 días.</p>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = urgentItems.map(p => {
+    const days = store.getDaysUntilExpiry(p.expiryDate);
+    const codeInfo = store.formatCodeInfo(p.plu || p.code);
+    const isAuto = p.section === 'autoservicio';
+
+    let dayBadge = '';
+    if (days < 0) {
+      dayBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-900/60 text-red-200 border border-red-500/40">VENCIDO hace ${Math.abs(days)}d</span>`;
+    } else if (days === 0) {
+      dayBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white animate-pulse">VENCE HOY</span>`;
+    } else if (days === 1) {
+      dayBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-600/90 text-white">1 DÍA</span>`;
+    } else {
+      dayBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-600/90 text-white">${days} DÍAS</span>`;
+    }
+
+    const sectionBadge = isAuto
+      ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-950/60 text-blue-300 border border-blue-500/30">🛒 Autoservicio</span>`
+      : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-500/30">🥩 Atendida</span>`;
+
+    let codeBadge = '';
+    if (codeInfo.type === 'PLU') {
+      codeBadge = `<span class="text-[10px] font-mono font-bold text-purple-300 bg-purple-950/40 px-1.5 py-0.5 rounded border border-purple-500/30">PLU: ${escapeHtml(codeInfo.code)}</span>`;
+    } else if (codeInfo.type === 'EAN') {
+      codeBadge = `<span class="text-[10px] font-mono font-bold text-cyan-300 bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-500/30">EAN: ${escapeHtml(codeInfo.code)}</span>`;
+    }
+
+    const unit = (p.measureType === 'kilogramos' || p.measureType === 'kg') ? 'kg' : 'uds';
+    const cantDisplay = (p.cantidad !== undefined && p.cantidad !== null) ? `${p.cantidad} ${unit}` : '';
+
+    return `
+      <div class="p-3 rounded-xl bg-surface-light border ${days <= 1 ? 'border-exp-red/50 bg-red-950/20' : 'border-exp-yellow/40 bg-amber-950/20'} flex flex-col gap-1.5">
+        <div class="flex items-start justify-between gap-2">
+          <div class="font-bold text-xs text-white leading-tight flex-1">${escapeHtml(p.name)}</div>
+          ${dayBadge}
+        </div>
+        <div class="flex flex-wrap items-center gap-1.5 text-[11px] text-text-secondary">
+          ${sectionBadge}
+          ${codeBadge}
+          <span class="text-white font-medium">📅 ${formatDateDisplay(p.expiryDate)}</span>
+          ${cantDisplay ? `<span class="font-bold text-white">(${cantDisplay})</span>` : ''}
+        </div>
+        <div class="text-[10px] text-text-secondary truncate">
+          🏭 Proveedor: <span class="text-text-primary">${escapeHtml(p.provider || p.proveedor || 'Sin especificar')}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================================
+// MODAL: CARGA MASIVA DE PRODUCTOS DESDE PDF
+// ============================================================
+
+let parsedPDFItemsCache = [];
+
+export function showPDFPreviewModal(parsedResult) {
+  const modal = document.getElementById('modal-pdf-preview');
+  if (!modal) return;
+
+  parsedPDFItemsCache = Array.isArray(parsedResult.items) ? parsedResult.items : [];
+
+  const providerInput = document.getElementById('pdf-batch-provider');
+  if (providerInput) {
+    providerInput.value = parsedResult.detectedProvider || 'Proveedor General';
+  }
+
+  const expiryInput = document.getElementById('pdf-batch-expiry');
+  if (expiryInput) {
+    const d = new Date();
+    d.setDate(d.getDate() + 5);
+    expiryInput.value = d.toISOString().split('T')[0];
+  }
+
+  const statsEl = document.getElementById('pdf-preview-stats');
+  if (statsEl) {
+    statsEl.textContent = `${parsedPDFItemsCache.length} producto(s) extraído(s) del documento PDF`;
+  }
+
+  const selectAll = document.getElementById('pdf-preview-select-all');
+  if (selectAll) selectAll.checked = true;
+
+  renderPDFPreviewList(parsedPDFItemsCache);
+  modal.classList.remove('hidden');
+}
+
+export function closePDFPreviewModal() {
+  const modal = document.getElementById('modal-pdf-preview');
+  if (modal) modal.classList.add('hidden');
+  parsedPDFItemsCache = [];
+}
+
+export function renderPDFPreviewList(items) {
+  const container = document.getElementById('pdf-preview-list');
+  if (!container) return;
+
+  if (!items || items.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-8 text-text-secondary text-xs">
+        No se pudieron identificar productos con código o formato reconocible en el PDF.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = items.map((item, idx) => {
+    const code = item.plu || item.code || '';
+    const codeInfo = store.formatCodeInfo(code);
+    const isKg = item.measureType === 'kilogramos' || item.measureType === 'kg';
+    const isAtendida = item.section === 'atendida';
+
+    return `
+      <div class="pdf-preview-item p-2.5 bg-surface-light rounded-xl border border-accent/20 flex flex-col gap-2" data-index="${idx}">
+        <div class="flex items-center gap-2">
+          <input type="checkbox" class="pdf-item-checkbox w-4 h-4 rounded accent-action cursor-pointer" checked data-index="${idx}">
+          <input type="text" class="pdf-item-name flex-1 bg-surface px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white border border-accent/30 focus:ring-1 focus:ring-action"
+            value="${escapeHtml(item.name || '')}" placeholder="Nombre del producto">
+          <span class="text-[10px] font-mono px-2 py-1 rounded bg-surface border border-accent/30 text-purple-300 font-bold whitespace-nowrap">
+            ${codeInfo.type}: ${escapeHtml(code || 'N/A')}
+          </span>
+          <input type="hidden" class="pdf-item-code" value="${escapeHtml(code)}">
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-[11px] pl-6">
+          <div>
+            <label class="block text-[10px] text-text-secondary mb-0.5">Sección</label>
+            <select class="pdf-item-section w-full bg-surface px-2 py-1 rounded border border-accent/30 text-white text-[11px]">
+              <option value="autoservicio" ${!isAtendida ? 'selected' : ''}>🛒 Autoservicio</option>
+              <option value="atendida" ${isAtendida ? 'selected' : ''}>🥩 Atendida</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] text-text-secondary mb-0.5">Medida</label>
+            <select class="pdf-item-measure w-full bg-surface px-2 py-1 rounded border border-accent/30 text-white text-[11px]">
+              <option value="kilogramos" ${isKg ? 'selected' : ''}>Kilogramos (kg)</option>
+              <option value="unidades" ${!isKg ? 'selected' : ''}>Unidades (uds)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] text-text-secondary mb-0.5">Cantidad</label>
+            <input type="number" step="any" min="0" class="pdf-item-quantity w-full bg-surface px-2 py-1 rounded border border-accent/30 text-white text-[11px]"
+              value="${item.cantidad || (isKg ? 10 : 1)}" placeholder="Cant.">
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+export function confirmPDFImport() {
+  const container = document.getElementById('pdf-preview-list');
+  if (!container) return;
+
+  const batchProvider = (document.getElementById('pdf-batch-provider')?.value || '').trim() || 'Proveedor Carnicería';
+  const batchExpiry = document.getElementById('pdf-batch-expiry')?.value || '';
+
+  if (!batchExpiry) {
+    showToast('Por favor selecciona una fecha de vencimiento general para el lote', 'warning');
+    return;
+  }
+
+  const cards = container.querySelectorAll('.pdf-preview-item');
+  const productsToImport = [];
+
+  cards.forEach(card => {
+    const checkbox = card.querySelector('.pdf-item-checkbox');
+    if (checkbox && checkbox.checked) {
+      const name = (card.querySelector('.pdf-item-name')?.value || '').trim();
+      const code = (card.querySelector('.pdf-item-code')?.value || '').trim();
+      const section = card.querySelector('.pdf-item-section')?.value || 'autoservicio';
+      const measureType = card.querySelector('.pdf-item-measure')?.value || 'kilogramos';
+      const qtyVal = Number(card.querySelector('.pdf-item-quantity')?.value) || 0;
+
+      if (name) {
+        productsToImport.push({
+          name: name,
+          plu: code,
+          code: code,
+          section: section,
+          measureType: measureType,
+          cantidad: qtyVal,
+          quantity: qtyVal,
+          provider: batchProvider,
+          proveedor: batchProvider,
+          expiryDate: batchExpiry,
+          notes: 'Importado masivamente vía documento PDF'
+        });
+      }
+    }
+  });
+
+  if (productsToImport.length === 0) {
+    showToast('No has seleccionado ningún producto para importar', 'warning');
+    return;
+  }
+
+  const importedCount = store.addBatchProducts(productsToImport);
+  closePDFPreviewModal();
+
+  renderProductList();
+  updateAlertBadge();
+  updateCatalogDatalists();
+  renderSettings();
+
+  showToast(`¡Importación exitosa! Se guardaron ${importedCount} productos`, 'success');
 }

@@ -1,25 +1,32 @@
 /**
- * app.js - Punto de entrada principal para El Rotador
- * Inicializa PWA, Service Worker, Catálogo Maestro y enlaza todos los eventos del DOM
+ * app.js - Punto de entrada principal para Rotador
+ * Inicializa PWA, Service Worker, IndexedDB, Catálogo Maestro y enlaza todos los eventos del DOM
  */
 
 import * as store from './store.js';
 import * as ui from './ui.js';
+import * as pdfImporter from './pdf-importer.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  // 1. Inicializar fecha del encabezado
+document.addEventListener('DOMContentLoaded', async () => {
+  // 1. Inicializar almacenamiento local persistente (IndexedDB + LocalStorage)
+  await store.initStore();
+
+  // 2. Inicializar fecha del encabezado
   ui.updateHeaderDate();
 
-  // 2. Registrar Service Worker para PWA offline
+  // 3. Registrar Service Worker para PWA offline
   registerServiceWorker();
 
-  // 3. Cargar datos de muestra si es la primera vez que se abre la app
+  // 4. Cargar datos de muestra si es la primera vez que se abre la app
   initializeSampleData();
 
-  // 4. Cargar datalists del Catálogo Maestro
+  // 5. Cargar datalists del Catálogo Maestro
   ui.updateCatalogDatalists();
 
-  // 5. Configurar todos los event listeners
+  // 6. Actualizar contador de alertas prioritarias en la campana
+  ui.updateAlertBadge();
+
+  // 7. Configurar todos los event listeners
   setupNavigationEvents();
   setupInventoryEvents();
   setupProductFormEvents();
@@ -27,10 +34,20 @@ document.addEventListener('DOMContentLoaded', () => {
   setupPedirPreciosEvents();
   setupSettingsEvents();
   setupCatalogModalEvents();
+  setupPriorityAlertsEvents();
+  setupPDFImportEvents();
 
-  // 6. Mostrar vista inicial (Autoservicio con distinción cromática azul)
+  // 8. Mostrar vista inicial (Autoservicio con distinción cromática azul)
   ui.showView('view-inventory');
   ui.setSection('autoservicio');
+
+  // 9. Sistema de aviso emergente al iniciar si existen productos prioritarios (vencidos o ≤3 días)
+  const priorityProducts = store.getPriorityProducts();
+  if (priorityProducts.length > 0) {
+    setTimeout(() => {
+      ui.showPriorityAlertsModal();
+    }, 700);
+  }
 });
 
 /**
@@ -484,6 +501,110 @@ function setupCatalogModalEvents() {
 
         ui.showToast(`Cargado desde catálogo: "${name}"`, 'success');
       }
+    });
+  }
+}
+
+/**
+ * Eventos del sistema de alertas prioritarias (Campana y Modal)
+ */
+function setupPriorityAlertsEvents() {
+  const btnBell = document.getElementById('btn-open-alerts');
+  const btnClose = document.getElementById('btn-close-priority-alerts');
+  const btnGoPrecios = document.getElementById('btn-priority-go-precios');
+  const btnDismiss = document.getElementById('btn-priority-dismiss');
+
+  if (btnBell) {
+    btnBell.addEventListener('click', () => {
+      ui.showPriorityAlertsModal();
+    });
+  }
+
+  if (btnClose) {
+    btnClose.addEventListener('click', () => {
+      ui.closePriorityAlertsModal();
+    });
+  }
+
+  if (btnGoPrecios) {
+    btnGoPrecios.addEventListener('click', () => {
+      ui.closePriorityAlertsModal();
+      ui.showView('view-pedir-precios');
+    });
+  }
+
+  if (btnDismiss) {
+    btnDismiss.addEventListener('click', () => {
+      ui.closePriorityAlertsModal();
+      ui.showView('view-inventory');
+    });
+  }
+}
+
+/**
+ * Eventos de la carga masiva mediante documentos PDF
+ */
+function setupPDFImportEvents() {
+  const btnOpenInventory = document.getElementById('btn-open-pdf-import');
+  const btnOpenSettings = document.getElementById('btn-settings-pdf-import');
+  const fileInput = document.getElementById('pdf-file-input');
+  const btnClosePreview = document.getElementById('btn-close-pdf-preview');
+  const btnCancelPreview = document.getElementById('btn-cancel-pdf-preview');
+  const btnConfirm = document.getElementById('btn-confirm-pdf-import');
+  const selectAll = document.getElementById('pdf-preview-select-all');
+
+  const triggerFileInput = () => {
+    if (fileInput) fileInput.click();
+  };
+
+  if (btnOpenInventory) btnOpenInventory.addEventListener('click', triggerFileInput);
+  if (btnOpenSettings) btnOpenSettings.addEventListener('click', triggerFileInput);
+
+  if (fileInput) {
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      try {
+        ui.showToast('Procesando documento PDF...', 'info');
+        const buffer = await file.arrayBuffer();
+        const extracted = await pdfImporter.extractTextFromPDF(buffer);
+        const parsed = pdfImporter.parseCarniceriaPDF(extracted.fullText, extracted.lines);
+
+        ui.showPDFPreviewModal(parsed);
+      } catch (err) {
+        console.error('Error importando PDF:', err);
+        ui.showToast('No se pudo leer el documento PDF: ' + (err.message || 'Error desconocido'), 'error');
+      } finally {
+        fileInput.value = '';
+      }
+    });
+  }
+
+  if (btnClosePreview) {
+    btnClosePreview.addEventListener('click', () => {
+      ui.closePDFPreviewModal();
+    });
+  }
+
+  if (btnCancelPreview) {
+    btnCancelPreview.addEventListener('click', () => {
+      ui.closePDFPreviewModal();
+    });
+  }
+
+  if (btnConfirm) {
+    btnConfirm.addEventListener('click', () => {
+      ui.confirmPDFImport();
+    });
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener('change', (e) => {
+      const checkboxes = document.querySelectorAll('.pdf-item-checkbox');
+      checkboxes.forEach(cb => {
+        cb.checked = e.target.checked;
+      });
     });
   }
 }

@@ -1,8 +1,8 @@
-# 🥩 El Rotador
+# 🏷️ Rotador
 
 **Control de Vencimientos y Gestión de Precios para Carnicería / Supermercado**
 
-PWA (Progressive Web App) diseñada para el control diario de fechas de vencimiento de productos cárnicos y la gestión de solicitudes de precios. Pensada para uso en dispositivos móviles con una sola mano.
+PWA diseñada para el control diario de fechas de vencimiento de productos y la gestión de solicitudes de precios. Pensada para uso en dispositivos móviles con un almacenamiento 100% offline.
 
 ---
 
@@ -88,9 +88,12 @@ El_Rotador/
 Este proyecto está bajo la licencia [MIT](https://opensource.org/licenses/MIT).
 
 ```
+Aquí tienes la actualización de la licencia adaptada para reflejar el cambio de nombre del proyecto a **Rotador** (actualizando el año y el titular del copyright según corresponda):
+
+```
 MIT License
 
-Copyright (c) 2024 El Rotador
+Copyright (c) 2026 Rotador
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -109,4 +112,5 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
 ```

@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>El Rotador - Control de Vencimientos</title>
+  <title>Rotador - Control de Vencimientos</title>
 
   <!-- PWA Meta -->
   <link rel="manifest" href="manifest.json">
@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
-  <meta name="description" content="Control de vencimientos para supermercado y carnicería">
+  <meta name="description" content="Control de vencimientos y gestión de precios para supermercado y carnicería">
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -52,6 +52,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
+  <!-- Mozilla PDF.js para Carga Masiva desde Documentos PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
   <style>
     /* Scrollbar styling */
     ::-webkit-scrollbar {
@@ -84,7 +87,7 @@
 
     /* Modal backdrop */
     .modal-backdrop {
-      background: rgba(0, 0, 0, 0.75);
+      background: rgba(0, 0, 0, 0.78);
       backdrop-filter: blur(4px);
     }
 
@@ -105,15 +108,30 @@
   <!-- ============================================================ -->
   <!-- TOP HEADER BAR                                                -->
   <!-- ============================================================ -->
-  <header id="app-header" class="bg-surface sticky top-0 z-30 px-4 py-3 flex items-center justify-between shadow-lg border-b border-accent/30">
+  <header id="app-header"
+    class="bg-surface sticky top-0 z-30 px-4 py-3 flex items-center justify-between shadow-lg border-b border-accent/30">
     <div class="flex items-center gap-2">
       <span class="text-xl">🥩</span>
-      <h1 class="text-base font-bold tracking-wide">El Rotador</h1>
-    </div>
-    <div class="flex items-center gap-2">
-      <span id="active-section-indicator" class="text-[11px] font-bold px-2 py-0.5 rounded-full border">
+      <h1 class="text-base font-bold tracking-wide text-white">Rotador</h1>
+      <span id="active-section-indicator" class="text-[11px] font-bold px-2 py-0.5 rounded-full border ml-1">
         AUTOSERVICIO
       </span>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <!-- Botón de Notificaciones y Alertas Prioritarias -->
+      <button id="btn-open-alerts"
+        class="relative p-2 rounded-lg bg-surface-light border border-accent/30 hover:border-accent text-white transition-all active:scale-95"
+        aria-label="Ver alertas de vencimiento">
+        <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+        <span id="badge-alerts-count"
+          class="hidden absolute -top-1 -right-1 bg-exp-red text-white text-[10px] font-extrabold w-5 h-5 rounded-full items-center justify-center shadow-md animate-pulse">
+          0
+        </span>
+      </button>
+
       <span id="header-date" class="text-xs text-text-secondary font-medium"></span>
     </div>
   </header>
@@ -142,17 +160,29 @@
         </button>
       </div>
 
-      <!-- Search / Filter Bar -->
-      <div class="px-4 pt-3 pb-2">
-        <div class="relative">
+      <!-- Barra de acciones rápidas (Búsqueda + Carga Masiva PDF) -->
+      <div class="px-4 pt-3 pb-2 flex items-center gap-2">
+        <div class="relative flex-1">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" fill="none"
             stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <input id="inventory-search" type="search" placeholder="Buscar por nombre, PLU, EAN o lote..."
+          <input id="inventory-search" type="search" placeholder="Buscar producto, PLU, EAN o proveedor..."
             class="w-full bg-surface-light rounded-lg pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20">
         </div>
+
+        <!-- Botón Carga Masiva PDF -->
+        <button id="btn-open-pdf-import"
+          class="px-3 py-2.5 rounded-lg bg-surface-light hover:bg-accent/40 text-xs font-bold text-white border border-accent/40 flex items-center gap-1.5 shadow-sm active:scale-95 transition-all flex-shrink-0"
+          title="Importar lista desde documento PDF">
+          <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+          <span class="hidden sm:inline">Cargar</span> PDF
+        </button>
+        <input id="pdf-file-input" type="file" accept=".pdf,application/pdf" class="hidden">
       </div>
 
       <!-- Sort / Filter chips -->
@@ -175,6 +205,14 @@
         </button>
       </div>
 
+      <!-- Leyenda de colores del semáforo de vencimiento -->
+      <div class="px-4 py-1.5 flex items-center justify-between text-[10px] text-text-secondary bg-surface/40 mx-4 rounded-lg mb-2 border border-accent/15">
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-exp-red"></span> ≤1d Crítico</span>
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-exp-orange"></span> 2-3d Urgente</span>
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-exp-yellow"></span> 4-6d Alerta</span>
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-exp-green"></span> &gt;6d Óptimo</span>
+      </div>
+
       <!-- Products List -->
       <div id="product-list" class="px-4 space-y-3 pb-6">
         <!-- Renderizado dinámicamente por JS -->
@@ -187,7 +225,7 @@
             d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
         </svg>
         <p class="text-text-secondary text-sm font-medium">No hay productos en esta sección</p>
-        <p class="text-text-secondary/60 text-xs mt-1">Toca el botón + para registrar uno</p>
+        <p class="text-text-secondary/60 text-xs mt-1">Toca el botón + para registrar uno o importa un PDF</p>
       </div>
 
       <!-- FAB: Add Product -->
@@ -462,8 +500,33 @@
       <div class="px-4 pt-4 pb-6">
         <h2 class="text-lg font-bold mb-6">Configuración</h2>
 
+        <!-- Carga Masiva PDF Section -->
+        <div class="space-y-4 mb-6">
+          <h3 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Importación de Datos</h3>
+          <div class="bg-surface-light rounded-xl p-4 border border-accent/20 shadow-md">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-lg">
+                  📄
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-white">Carga Masiva desde PDF</p>
+                  <p class="text-xs text-text-secondary mt-0.5">Extrae Nombre, PLU y Proveedor</p>
+                </div>
+              </div>
+              <button id="btn-settings-pdf-import"
+                class="px-3 py-1.5 rounded-lg bg-action hover:bg-action-hover text-white text-xs font-bold transition-all shadow-sm">
+                Subir PDF
+              </button>
+            </div>
+            <p class="text-xs text-text-secondary leading-relaxed">
+              Importa facturas, remisiones o listados de compra en PDF. El sistema extrae automáticamente los productos, códigos y el proveedor sin necesidad de internet.
+            </p>
+          </div>
+        </div>
+
         <!-- Catálogo Maestro Section -->
-        <div class="space-y-4 mb-8">
+        <div class="space-y-4 mb-6">
           <h3 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Base de Datos Interna</h3>
           <div class="bg-surface-light rounded-xl p-4 border border-accent/20 shadow-md">
             <div class="flex items-center justify-between mb-3">
@@ -482,14 +545,14 @@
               </button>
             </div>
             <p class="text-xs text-text-secondary leading-relaxed">
-              Autocompleta nombre, código y proveedor al registrar o escanear productos. Se actualiza automáticamente al guardar nuevos artículos.
+              Autocompleta nombre, código y proveedor al registrar o escanear productos.
             </p>
           </div>
         </div>
 
         <!-- Backup Section -->
         <div class="space-y-4">
-          <h3 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Respaldo de Datos</h3>
+          <h3 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Respaldo y Portabilidad</h3>
 
           <!-- Export -->
           <button id="btn-export-json"
@@ -502,7 +565,7 @@
             </div>
             <div class="text-left">
               <p class="text-sm font-semibold">Exportar datos (JSON)</p>
-              <p class="text-xs text-text-secondary mt-0.5">Descarga copia de productos y catálogo maestro</p>
+              <p class="text-xs text-text-secondary mt-0.5">Descarga copia completa de la base de datos</p>
             </div>
           </button>
 
@@ -527,21 +590,21 @@
 
         <!-- App Info -->
         <div class="mt-8 space-y-4">
-          <h3 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Información</h3>
+          <h3 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Información del Sistema</h3>
           <div class="bg-surface-light rounded-xl p-4 border border-accent/20">
             <div class="flex items-center gap-3 mb-3">
               <span class="text-2xl">🥩</span>
               <div>
-                <p class="text-sm font-bold">El Rotador</p>
-                <p id="app-version" class="text-xs text-text-secondary">v1.2.0 (Mobile-First PWA)</p>
+                <p class="text-sm font-bold">Rotador</p>
+                <p id="app-version" class="text-xs text-text-secondary">v2.0.0 (IndexedDB Offline PWA)</p>
               </div>
             </div>
             <p class="text-xs text-text-secondary leading-relaxed">
-              Control estricto de vencimientos y gestión de precios para carnicerías y supermercados.
+              Control estricto de vencimientos y gestión de precios para carnicerías y supermercados. Funciona de manera 100% autónoma y sin conexión.
             </p>
             <div class="mt-3 pt-3 border-t border-accent/20 space-y-1">
               <p id="settings-product-count" class="text-xs text-text-secondary">Productos almacenados: —</p>
-              <p id="settings-storage-info" class="text-xs text-text-secondary">Almacenamiento: LocalStorage (Offline)</p>
+              <p id="settings-storage-info" class="text-xs text-exp-green font-medium">✓ Base de datos local: IndexedDB (Offline nativo)</p>
             </div>
           </div>
         </div>
@@ -549,6 +612,107 @@
     </section>
 
   </main>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: ALERTAS PRIORITARIAS (AL INICIAR O POR CAMPANA)         -->
+  <!-- ============================================================ -->
+  <div id="modal-priority-alerts" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="modal-backdrop absolute inset-0"></div>
+    <div class="relative bg-surface rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl border border-exp-red/40 overflow-hidden">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-5 py-3.5 bg-red-950/40 border-b border-exp-red/30">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">⚠️</span>
+          <div>
+            <h3 class="text-sm font-bold text-white">Alertas de Vencimiento Urgente</h3>
+            <p id="priority-alerts-subtitle" class="text-[11px] text-red-300">Productos que requieren atención prioritaria</p>
+          </div>
+        </div>
+        <button id="btn-close-priority-alerts" class="text-text-secondary hover:text-white p-1" aria-label="Cerrar alertas">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Priority List -->
+      <div id="priority-alerts-list" class="flex-1 overflow-y-auto p-4 space-y-2.5">
+        <!-- Rellenado dinámicamente por JS -->
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="p-3 bg-surface-light border-t border-accent/20 flex gap-2">
+        <button id="btn-priority-go-precios"
+          class="flex-1 py-2.5 rounded-lg bg-action hover:bg-action-hover text-white text-xs font-bold transition-all shadow-md">
+          Ir a Pedir Precios
+        </button>
+        <button id="btn-priority-dismiss"
+          class="flex-1 py-2.5 rounded-lg bg-surface text-text-secondary hover:text-white text-xs font-semibold border border-accent/30 transition-all">
+          Revisar Inventario
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: VISTA PREVIA CARGA MASIVA PDF                           -->
+  <!-- ============================================================ -->
+  <div id="modal-pdf-preview" class="fixed inset-0 z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-backdrop absolute inset-0"></div>
+    <div class="relative bg-surface rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl border border-accent/40 overflow-hidden">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-4 py-3 bg-surface-light border-b border-accent/20">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">📄</span>
+          <div>
+            <h3 class="text-sm font-bold text-white">Carga Masiva desde Documento PDF</h3>
+            <p id="pdf-preview-stats" class="text-[11px] text-text-secondary">Extracción automática de Nombre, PLU y Proveedor</p>
+          </div>
+        </div>
+        <button id="btn-close-pdf-preview" class="text-text-secondary hover:text-white p-1" aria-label="Cerrar vista previa">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Configuración Global del Lote -->
+      <div class="p-3 bg-surface border-b border-accent/20 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+        <div>
+          <label class="block font-medium text-text-secondary mb-1">Proveedor Detectado / Asignado:</label>
+          <input id="pdf-batch-provider" type="text"
+            class="w-full bg-surface-light rounded-lg px-3 py-2 text-white border border-accent/30 focus:outline-none focus:ring-1 focus:ring-action">
+        </div>
+        <div>
+          <label class="block font-medium text-text-secondary mb-1">Fecha de Vencimiento General:</label>
+          <input id="pdf-batch-expiry" type="date"
+            class="w-full bg-surface-light rounded-lg px-3 py-2 text-white border border-accent/30 focus:outline-none focus:ring-1 focus:ring-action">
+        </div>
+      </div>
+
+      <!-- Lista de Productos Detectados -->
+      <div id="pdf-preview-list" class="flex-1 overflow-y-auto p-3 space-y-2">
+        <!-- Renderizado dinámico -->
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="p-3 bg-surface-light border-t border-accent/20 flex items-center justify-between gap-3">
+        <label class="flex items-center gap-2 cursor-pointer text-xs text-text-secondary">
+          <input id="pdf-preview-select-all" type="checkbox" checked class="w-4 h-4 rounded accent-action">
+          <span>Seleccionar todos</span>
+        </label>
+        <div class="flex gap-2">
+          <button id="btn-cancel-pdf-preview" class="px-4 py-2 rounded-lg bg-surface text-text-secondary text-xs font-semibold border border-accent/30">
+            Cancelar
+          </button>
+          <button id="btn-confirm-pdf-import" class="px-5 py-2 rounded-lg bg-action hover:bg-action-hover text-white text-xs font-bold shadow-md active:scale-95 transition-all flex items-center gap-1.5">
+            <span>📥</span>
+            <span id="btn-confirm-pdf-text">Confirmar e Importar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ============================================================ -->
   <!-- MODAL: CATÁLOGO MAESTRO                                       -->
@@ -588,7 +752,6 @@
   <div id="modal-scanner" class="fixed inset-0 z-50 hidden">
     <div class="modal-backdrop absolute inset-0"></div>
     <div class="relative flex flex-col h-full bg-primary">
-      <!-- Scanner Header -->
       <div class="flex items-center justify-between px-4 py-3 bg-surface border-b border-accent/30">
         <h3 class="text-sm font-bold">Escanear Código de Barras</h3>
         <button id="btn-close-scanner" class="text-text-secondary hover:text-white p-1 transition-colors"
@@ -599,11 +762,9 @@
         </button>
       </div>
 
-      <!-- Camera Preview -->
       <div class="flex-1 relative overflow-hidden bg-black">
         <video id="scanner-video" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline muted></video>
 
-        <!-- Scan overlay guides -->
         <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div class="absolute inset-0 bg-black/40"></div>
           <div class="relative w-72 h-40 border-2 border-action rounded-2xl z-10"
@@ -616,7 +777,6 @@
           </div>
         </div>
 
-        <!-- Scanner status -->
         <div class="absolute bottom-6 left-0 right-0 text-center z-20">
           <p id="scanner-status" class="text-sm text-white/80 bg-black/60 inline-block px-4 py-2 rounded-full border border-white/20">
             Apunte la cámara al código de barras
@@ -624,7 +784,6 @@
         </div>
       </div>
 
-      <!-- Scanner cancel button -->
       <div class="px-4 py-4 bg-surface">
         <button id="btn-cancel-scanner"
           class="w-full py-3 rounded-xl bg-surface-light text-text-secondary text-sm font-semibold hover:bg-accent/20 transition-colors">
@@ -658,7 +817,8 @@
   <!-- TOAST NOTIFICATION                                            -->
   <!-- ============================================================ -->
   <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 hidden">
-    <div class="bg-surface border border-accent/40 rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 min-w-[220px]">
+    <div
+      class="bg-surface border border-accent/40 rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 min-w-[220px]">
       <span id="toast-icon" class="text-lg font-bold">✓</span>
       <p id="toast-message" class="text-sm font-medium">Mensaje</p>
     </div>
@@ -667,7 +827,8 @@
   <!-- ============================================================ -->
   <!-- BOTTOM NAVIGATION BAR                                         -->
   <!-- ============================================================ -->
-  <nav id="bottom-nav" class="bottom-nav fixed bottom-0 left-0 right-0 z-30 bg-surface border-t border-accent/30 shadow-2xl">
+  <nav id="bottom-nav"
+    class="bottom-nav fixed bottom-0 left-0 right-0 z-30 bg-surface border-t border-accent/30 shadow-2xl">
     <div class="flex items-center justify-around h-16 max-w-lg mx-auto">
       <!-- Inventario -->
       <button data-view="view-inventory"

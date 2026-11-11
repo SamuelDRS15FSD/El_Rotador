@@ -1,10 +1,13 @@
 /**
- * store.js - Módulo de datos/estado para El Rotador
- * Gestiona LocalStorage, Catálogo Maestro y lógica de negocio
+ * store.js - Módulo de datos/estado para Rotador PWA
+ * Gestiona IndexedDB, LocalStorage, Catálogo Maestro y lógica de negocio
  */
 
-// Clave de almacenamiento en LocalStorage
-const STORAGE_KEY = 'elRotador';
+import * as db from './db.js';
+
+// Clave de almacenamiento en LocalStorage (compatibilidad y fallback)
+const STORAGE_KEY = 'rotadorData';
+const LEGACY_STORAGE_KEY = 'elRotador';
 
 // Catálogo Maestro inicial predeterminado con productos de carnicería / supermercado
 const DEFAULT_MASTER_CATALOG = [
@@ -22,45 +25,101 @@ const DEFAULT_MASTER_CATALOG = [
   { name: 'Piqueo Parrillero x10', code: '7796789012345', provider: 'Elaboración Propia', measureType: 'unidades', section: 'autoservicio' }
 ];
 
+// Estado en memoria
+let currentState = null;
+
 // ============================================================
-// Helpers internos
+// Helpers internos y Persistencia Local Dual (IndexedDB + LocalStorage)
 // ============================================================
 
 /**
- * Lee el estado completo desde LocalStorage
+ * Lee el estado completo desde LocalStorage o memoria
  * @returns {{ products: Array, priceRequests: Array, masterCatalog: Array, settings: Object }}
  */
 function _loadState() {
+  if (currentState) return currentState;
+
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    let raw = localStorage.getItem(STORAGE_KEY);
+    // Migración transparente si existía bajo la clave previa
+    if (!raw) {
+      raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (raw) {
+        localStorage.setItem(STORAGE_KEY, raw);
+      }
+    }
+
     if (raw) {
       const parsed = JSON.parse(raw);
       if (!parsed.masterCatalog || !Array.isArray(parsed.masterCatalog) || parsed.masterCatalog.length === 0) {
         parsed.masterCatalog = [...DEFAULT_MASTER_CATALOG];
       }
-      return parsed;
+      currentState = parsed;
+      return currentState;
     }
   } catch (e) {
     console.error('Error leyendo LocalStorage:', e);
   }
+
   // Estado inicial por defecto
-  return {
+  currentState = {
     products: [],
     priceRequests: [],
     masterCatalog: [...DEFAULT_MASTER_CATALOG],
     settings: { mondayHoliday: false }
   };
+  return currentState;
 }
 
 /**
- * Persiste el estado completo en LocalStorage
+ * Persiste el estado completo en LocalStorage e IndexedDB
  * @param {Object} state
  */
 function _saveState(state) {
+  currentState = state;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (e) {
     console.error('Error guardando en LocalStorage:', e);
+  }
+
+  // Sincronizar de forma asíncrona con IndexedDB
+  try {
+    db.dbSaveProducts(state.products || []);
+    db.dbSavePriceRequests(state.priceRequests || []);
+    db.dbSaveMasterCatalog(state.masterCatalog || []);
+  } catch (e) {
+    console.warn('Error sincronizando con IndexedDB:', e);
+  }
+}
+
+/**
+ * Inicializa la persistencia IndexedDB y recupera datos almacenados
+ * @returns {Promise<void>}
+ */
+export async function initStore() {
+  try {
+    await db.initDB();
+    const idbProducts = await db.dbLoadProducts();
+    const idbRequests = await db.dbLoadPriceRequests();
+    const idbCatalog = await db.dbLoadMasterCatalog();
+
+    const state = _loadState();
+
+    // Si IndexedDB tiene más datos que LocalStorage, sincronizar
+    if (idbProducts && idbProducts.length > state.products.length) {
+      state.products = idbProducts;
+    }
+    if (idbRequests && idbRequests.length > state.priceRequests.length) {
+      state.priceRequests = idbRequests;
+    }
+    if (idbCatalog && idbCatalog.length > state.masterCatalog.length) {
+      state.masterCatalog = idbCatalog;
+    }
+
+    _saveState(state);
+  } catch (err) {
+    console.warn('Persistencia inicial usando LocalStorage:', err);
   }
 }
 
@@ -84,19 +143,19 @@ function _generateId() {
  * @returns {{ type: 'PLU'|'EAN'|null, label: string, code: string }}
  */
 export function formatCodeInfo(code) {
-  if (!code) return { type: null, label: '', code: '' };
+  if (!code) return { type: null, label: 'Sin código', code: '' };
   const str = String(code).trim();
   const digits = str.replace(/\D/g, '');
 
   if (!digits) {
-    return { type: null, label: str, code: str };
+    return { type: null, label: 'Sin código', code: '' };
   }
 
   if (digits.length >= 1 && digits.length <= 6) {
-    return { type: 'PLU', label: `PLU: ${str}`, code: str };
+    return { type: 'PLU', label: `PLU: ${digits}`, code: digits };
   }
 
-  return { type: 'EAN', label: `EAN: ${str}`, code: str };
+  return { type: 'EAN', label: `EAN: ${digits}`, code: digits };
 }
 
 // ============================================================
@@ -124,7 +183,6 @@ export function addToMasterCatalog(item) {
   const cleanName = item.name.trim();
   const cleanCode = (item.code || item.plu || '').trim();
 
-  // Buscar coincidencia por código si existe, o por nombre exacto
   let idx = -1;
   if (cleanCode) {
     idx = state.masterCatalog.findIndex(entry => entry.code && entry.code.toLowerCase() === cleanCode.toLowerCase());
@@ -200,8 +258,8 @@ export function getProductsBySection(section) {
 
 /**
  * Agrega un nuevo producto
- * @param {Object} product - Datos del producto (sin id ni createdAt)
- * @returns {Object} Producto creado con id y createdAt
+ * @param {Object} product - Datos del producto
+ * @returns {Object} Producto creado
  */
 export function addProduct(product) {
   const state = _loadState();
@@ -217,7 +275,7 @@ export function addProduct(product) {
     section: product.section || 'autoservicio',
     measureType: product.measureType || 'unidades',
     cantidad: parsedQuantity,
-    quantity: parsedQuantity, // Compatibilidad bidireccional
+    quantity: parsedQuantity,
     provider: provider,
     proveedor: provider,
     notes: (product.notes || '').trim(),
@@ -242,6 +300,23 @@ export function addProduct(product) {
 }
 
 /**
+ * Agrega múltiples productos en lote (ej. importación desde PDF)
+ * @param {Array<Object>} productsList
+ * @returns {number} Cantidad de productos importados
+ */
+export function addBatchProducts(productsList) {
+  if (!Array.isArray(productsList) || productsList.length === 0) return 0;
+  let count = 0;
+  for (const item of productsList) {
+    if (item.name && item.name.trim()) {
+      addProduct(item);
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
  * Actualiza un producto existente
  * @param {string} id - ID del producto
  * @param {Object} data - Campos a actualizar
@@ -252,7 +327,6 @@ export function updateProduct(id, data) {
   const index = state.products.findIndex(p => p.id === id);
   if (index === -1) return null;
 
-  // Sincronizar cantidad/quantity y provider/proveedor
   const updatedData = { ...data };
   if (updatedData.cantidad !== undefined || updatedData.quantity !== undefined) {
     const qty = Number(updatedData.cantidad !== undefined ? updatedData.cantidad : updatedData.quantity) || 0;
@@ -268,7 +342,6 @@ export function updateProduct(id, data) {
   state.products[index] = { ...state.products[index], ...updatedData };
   _saveState(state);
 
-  // Actualizar catálogo maestro si corresponde
   if (state.products[index].name) {
     addToMasterCatalog({
       name: state.products[index].name,
@@ -309,7 +382,7 @@ export function getProduct(id) {
 }
 
 // ============================================================
-// Vencimientos - Cálculos y alertas
+// Vencimientos - Cálculos, Alertas por Colores y Prioridades
 // ============================================================
 
 /**
@@ -327,20 +400,34 @@ export function getDaysUntilExpiry(expiryDate) {
 }
 
 /**
- * Determina el nivel de alerta según los días restantes
- * Reglas de Spec:
- * - > 6 días: 'ok' (Verde)
- * - ≤ 6 días: 'warning' (Amarillo / Precaución)
- * - ≤ 3 días: 'urgent' (Naranja / Urgente)
- * - ≤ 1 día o vencido: 'critical' (Rojo / Crítico)
+ * Determina el nivel de alerta cromática según los días restantes:
+ * - > 6 días: 'ok' (Verde - Óptimo)
+ * - 4 a 6 días: 'warning' (Amarillo - Precaución)
+ * - 2 a 3 días: 'urgent' (Naranja - Urgente)
+ * - ≤ 1 día o vencido: 'critical' (Rojo - Crítico)
  * @param {number} daysRemaining - Días hasta el vencimiento
  * @returns {'ok'|'warning'|'urgent'|'critical'} Nivel de alerta
  */
 export function getAlertLevel(daysRemaining) {
-  if (daysRemaining <= 1) return 'critical';   // ≤1 día o vencido → rojo
-  if (daysRemaining <= 3) return 'urgent';     // ≤3 días → naranja
-  if (daysRemaining <= 6) return 'warning';    // ≤6 días → amarillo
-  return 'ok';                                  // >6 días → verde
+  if (daysRemaining <= 1) return 'critical';
+  if (daysRemaining <= 3) return 'urgent';
+  if (daysRemaining <= 6) return 'warning';
+  return 'ok';
+}
+
+/**
+ * Obtiene los productos prioritarios que requieren mayor atención urgente (≤ 3 días o vencidos)
+ * @returns {Array<Object>} Lista de productos críticos y urgentes ordenados por fecha
+ */
+export function getPriorityProducts() {
+  const products = getAllProducts();
+  const urgentItems = products.filter(p => {
+    const days = getDaysUntilExpiry(p.expiryDate);
+    return days <= 3; // Críticos (≤1 día/vencidos) y urgentes (2-3 días)
+  });
+
+  urgentItems.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+  return urgentItems;
 }
 
 // ============================================================
@@ -395,7 +482,7 @@ export function updatePriceRequest(id, data) {
 }
 
 /**
- * Obtiene productos que necesitan solicitar precio (próximos a vencer en rango crítico ≤6 días)
+ * Obtiene productos que necesitan solicitar precio (≤6 días de vencimiento)
  * @param {string} [section] - Sección opcional para filtrar
  * @returns {Array} Productos que necesitan precio
  */
@@ -403,7 +490,7 @@ export function getProductsNeedingPrices(section) {
   let products = section ? getProductsBySection(section) : getAllProducts();
   return products.filter(p => {
     const days = getDaysUntilExpiry(p.expiryDate);
-    return days <= 6; // Productos en warning, urgent o critical
+    return days <= 6;
   });
 }
 
@@ -417,15 +504,10 @@ export function getProductsNeedingPrices(section) {
  * @returns {boolean}
  */
 export function isPriceRequestDay(date, mondayHoliday) {
-  const day = date.getDay(); // 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb
+  const day = date.getDay();
 
-  // Jueves siempre es día de pedir
   if (day === 4) return true;
-
-  // Si lunes NO es festivo, lunes es día de pedir
   if (!mondayHoliday && day === 1) return true;
-
-  // Si lunes ES festivo, martes es día de pedir en su lugar
   if (mondayHoliday && day === 2) return true;
 
   return false;
