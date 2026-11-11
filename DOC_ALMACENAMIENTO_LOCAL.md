@@ -132,18 +132,30 @@ Y para la PWA anclada al inicio:
 
 ---
 
-## 4. Política de Base de Datos Limpia (Zero-Seed Policy)
+## 4. Política de Base de Datos Limpia (Zero-Seed Policy) y Cero Permisos Innecesarios
 
-Para garantizar total transparencia en el punto de venta:
-1. **Inicio Limpio:** La aplicación **no** incluye productos precargados ni semillas en inventario.
-2. **Modo Simulación:** Si el operador o supervisor desea testear el sistema, puede presionar **"▶️ Iniciar Simulación"** en la sección *Pedir Precios*. Esto inyecta un escenario de prueba aislado (`isSimulation: true`), permitiendo verificar el marcado de precios, la selección de cantidades y la generación/compartición del PDF.
-3. **Limpieza con un Clic:** La simulación se puede eliminar al instante con **"🗑️ Limpiar Simulación"**, dejando el inventario intacto.
-4. **Vaciado Total:** Desde *Configuración*, el botón **"Vaciar / Restablecer Almacenamiento"** borra simultáneamente IndexedDB y LocalStorage.
+Para garantizar total transparencia en el punto de venta y privacidad del operador:
+1. **Inicio 100% Limpio:** La aplicación **no** incluye productos precargados ni semillas en inventario al instalarse o abrirse por primera vez.
+2. **Cero Permisos Intrusivos:** IndexedDB y LocalStorage son APIs nativas del navegador móvil que no solicitan permisos al usuario, permitiendo lectura y guardado silencioso, privado y seguro.
+3. **Indicador de Conexión en Tiempo Real:** Monitor visual sutil en el encabezado que valida la autonomía de la app en modo Online u Offline.
+4. **Modo Simulación:** Si el operador o supervisor desea testear el sistema, puede presionar **"▶️ Iniciar Simulación"** en la sección *Pedir Precios*. Esto inyecta un escenario de prueba aislado (`isSimulation: true`), permitiendo verificar el marcado de precios, la selección de cantidades y la generación/compartición del PDF.
+5. **Limpieza con un Clic:** La simulación se puede eliminar al instante con **"🗑️ Limpiar Simulación"**, dejando el inventario intacto.
+6. **Vaciado Total:** Desde *Configuración*, el botón **"Vaciar / Restablecer Almacenamiento"** borra simultáneamente IndexedDB y LocalStorage.
 
 ---
 
-## 5. Portabilidad y Compartición Nativa (Web Share API)
+## 5. Escala Oficial Ajustada de Control de Vencimientos por Colores
+
+- 🟢 **Verde (> 7 días):** Producto en estado óptimo.
+- 🟡 **Amarillo (5 a 7 días):** Alerta para pedir precios en los días de corte (Lunes / Jueves o Martes si hay festivo). Criterio estricto de rotación en el módulo de precios ($\le 7$ días).
+- 🟠 **Naranja (3 a 4 días):** Atención urgente de rotación o descuento en mostrador.
+- 🔴 **Rojo (≤ 2 días / Vencido):** Crítico / Retiro. Diseñado para retirar el producto del lineal o mostrador **1 día antes** de su vencimiento efectivo.
+
+---
+
+## 6. Portabilidad y Compartición Nativa (Web Share API)
 
 Rotador implementa la pasarela nativa del sistema operativo (`navigator.share`):
 - **Reportes PDF:** Se compilan en memoria como `Blob` y se transfieren a WhatsApp, Gmail o Drive con la función *Compartir Reporte PDF*.
 - **Base de Datos Completa:** Se exporta como archivo JSON estructurado y se comparte con *Compartir Base de Datos* para sincronizar entre dispositivos o realizar respaldos manuales.
+

@@ -13,15 +13,16 @@ PWA diseñada para el control diario de fechas de vencimiento de productos y la 
 - 💾 **Persistencia Local Offline (IndexedDB + LocalStorage)** — Almacenamiento local seguro en el dispositivo que garantiza funcionamiento autónomo sin conexión a internet.
   - Documentación técnica detallada: consulta [DOC_ALMACENAMIENTO_LOCAL.md](file:///c:/Users/FSD/Documents/fullstack/Web%20Carnes/El_Rotador/DOC_ALMACENAMIENTO_LOCAL.md).
 - 📄 **Carga Masiva mediante PDF** — Extrae automáticamente Nombre, Código PLU/EAN y Proveedor desde listas o facturas PDF con visor interactivo de confirmación.
-- 🔴🟠🟡🟢 **Control Dinámico de Vencimientos por Colores** — Alertas visuales dinámicas actualizadas en tiempo real desde el día del registro:
-  - 🔴 **Rojo:** Vence hoy / Vencido / 1 día restante.
-  - 🟠 **Naranja:** 2 a 3 días restantes (atención urgente).
-  - 🟡 **Amarillo:** 4 a 6 días restantes (precaución).
-  - 🟢 **Verde:** Más de 6 días restantes.
-- 🔔 **Notificaciones y Alertas Prioritarias** — Panel y aviso emergente automático al iniciar con los productos que requieren atención urgente (≤3 días).
-- 🎨 **Diferenciación Visual Cromática** — Separación estricta entre **🛒 Autoservicio (Azul)** y **🥩 Atendida (Ámbar)**.
+- 🔴🟠🟡🟢 **Control Dinámico de Vencimientos por Colores (Escala Oficial Ajustada)** — Alertas visuales dinámicas actualizadas en tiempo real desde el día del registro:
+  - 🟢 **Verde:** Más de 7 días (Estado óptimo).
+  - 🟡 **Amarillo:** Entre 5 y 7 días (Alerta para pedir precios / rotación programada).
+  - 🟠 **Naranja:** 3 a 4 días restantes (Atención urgente).
+  - 🔴 **Rojo (Crítico / Retiro):** 2 días o menos / Vencido (Pensado para retirar el producto 1 día antes de su vencimiento).
+- 🌐 **Indicador de Conexión en Tiempo Real y Cero Permisos Innecesarios** — Monitor sutil en el encabezado (Online / Offline) que garantiza funcionamiento 100% autónomo sin solicitar permisos intrusivos al usuario.
+- 🔔 **Notificaciones y Alertas Prioritarias** — Panel y aviso emergente automático al iniciar con los productos que requieren atención urgente o retiro (≤ 4 días).
+- 🎨 **Diferenciación Visual Cromática y Ergonomía Móvil** — Separación estricta entre **🛒 Autoservicio (Azul)** y **🥩 Atendida (Ámbar)**, con espaciado táctil optimizado para evitar toques accidentales en teléfonos.
 - 🔢 **Diferenciación Exclusiva PLU vs EAN** — Detección inteligente de códigos (1 a 6 dígitos: `PLU: [código]`; 7+ dígitos: `EAN: [código]`).
-- 📄 **Reportes PDF Oficiales y Compartición Nativa** — Generación de PDF con productos marcados para precio y botón para compartir vía Web Share API (WhatsApp, Correo, Drive).
+- 📄 **Reportes PDF Oficiales y Compartición Nativa** — Exportación formateada de productos con ≤ 7 días con columnas clave: PLU, Nombre del Producto, Sección, Existencia y Días Restantes. Botón directo de compartición vía Web Share API (WhatsApp, Correo, Drive).
 - 📸 **Escáner de Códigos de Barras** — Lectura con la cámara del móvil mediante ZXing.
 
 ---

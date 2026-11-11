@@ -109,30 +109,46 @@
   <!-- TOP HEADER BAR                                                -->
   <!-- ============================================================ -->
   <header id="app-header"
-    class="bg-surface sticky top-0 z-30 px-4 py-3 flex items-center justify-between shadow-lg border-b border-accent/30">
-    <div class="flex items-center gap-2">
-      <span class="text-xl">🥩</span>
-      <h1 class="text-base font-bold tracking-wide text-white">Rotador</h1>
-      <span id="active-section-indicator" class="text-[11px] font-bold px-2 py-0.5 rounded-full border ml-1">
+    class="bg-surface sticky top-0 z-30 px-3.5 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between shadow-lg border-b border-accent/30 gap-2">
+    <!-- Lado Izquierdo: Logotipo y Título de App -->
+    <div class="flex items-center gap-2 min-w-0">
+      <span class="text-xl flex-shrink-0">🥩</span>
+      <h1 class="text-base font-bold tracking-wide text-white truncate">Rotador</h1>
+      <!-- Indicador de sección: visible en tablets/desktop para evitar colisión en móvil -->
+      <span id="active-section-indicator"
+        class="hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-500/40 text-blue-300 bg-blue-950/40 ml-1 truncate">
         AUTOSERVICIO
       </span>
     </div>
-    <div class="flex items-center gap-2.5">
-      <!-- Botón de Notificaciones y Alertas Prioritarias -->
-      <button id="btn-open-alerts"
-        class="relative p-2 rounded-lg bg-surface-light border border-accent/30 hover:border-accent text-white transition-all active:scale-95"
-        aria-label="Ver alertas de vencimiento">
-        <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
-        <span id="badge-alerts-count"
-          class="hidden absolute -top-1 -right-1 bg-exp-red text-white text-[10px] font-extrabold w-5 h-5 rounded-full items-center justify-center shadow-md animate-pulse">
-          0
-        </span>
-      </button>
 
-      <span id="header-date" class="text-xs text-text-secondary font-medium"></span>
+    <!-- Lado Derecho: Indicador Online/Offline + Fecha + Campana con separación generosa -->
+    <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+      <!-- Indicador de Conexión en Tiempo Real (Online / Offline nativo) -->
+      <div id="connection-status"
+        class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 transition-all"
+        title="Operación 100% offline garantizada">
+        <span id="connection-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+        <span id="connection-text" class="hidden xs:inline">Online</span>
+      </div>
+
+      <!-- Fecha actual -->
+      <span id="header-date" class="text-[11px] text-text-secondary font-medium hidden sm:inline-block"></span>
+
+      <!-- Botón de Notificaciones y Alertas Prioritarias con separación y padding táctil seguro -->
+      <div class="ml-1 sm:ml-2 pl-1 border-l border-accent/20">
+        <button id="btn-open-alerts"
+          class="relative p-2 rounded-lg bg-surface-light border border-accent/30 hover:border-accent text-white transition-all active:scale-95 flex items-center justify-center min-w-[36px] min-h-[36px]"
+          aria-label="Ver alertas de vencimiento prioritarias">
+          <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          <span id="badge-alerts-count"
+            class="hidden absolute -top-1 -right-1 bg-exp-red text-white text-[10px] font-extrabold w-5 h-5 rounded-full items-center justify-center shadow-md animate-pulse">
+            0
+          </span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -146,8 +162,8 @@
     <!-- ========================================================== -->
     <section id="view-inventory" class="view active min-h-full">
 
-      <!-- Sub-tabs: Autoservicio (Azul) / Atendida (Ámbar) con fuerte distinción cromática -->
-      <div id="inventory-tabs" class="flex bg-surface sticky top-0 z-20 border-b border-accent/40 shadow-sm">
+      <!-- Sub-tabs: Autoservicio (Azul) / Atendida (Ámbar) con margen vertical adecuado -->
+      <div id="inventory-tabs" class="flex bg-surface sticky top-0 z-20 border-b border-accent/40 shadow-sm my-0.5">
         <button data-section="autoservicio"
           class="inventory-tab flex-1 py-3 text-xs sm:text-sm font-bold text-center transition-all flex items-center justify-center gap-1.5 border-b-2">
           <span>🛒</span>

@@ -11,8 +11,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 1. Inicializar almacenamiento local persistente (IndexedDB + LocalStorage)
   await store.initStore();
 
-  // 2. Inicializar fecha del encabezado
+  // 2. Inicializar fecha del encabezado y estado de conexión en tiempo real
   ui.updateHeaderDate();
+  ui.updateConnectionStatus();
 
   // 3. Registrar Service Worker para PWA offline
   registerServiceWorker();
@@ -33,12 +34,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupCatalogModalEvents();
   setupPriorityAlertsEvents();
   setupPDFImportEvents();
+  setupConnectionEvents();
 
   // 7. Mostrar vista inicial (Autoservicio con distinción cromática azul)
   ui.showView('view-inventory');
   ui.setSection('autoservicio');
 
-  // 8. Sistema de aviso emergente al iniciar si existen productos prioritarios (vencidos o ≤3 días)
+  // 8. Sistema de aviso emergente al iniciar si existen productos prioritarios (vencidos o ≤ 4 días)
   const priorityProducts = store.getPriorityProducts();
   if (priorityProducts.length > 0) {
     setTimeout(() => {
@@ -46,6 +48,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 700);
   }
 });
+
+/**
+ * Monitoreo de conectividad (Online / Offline) en tiempo real
+ */
+function setupConnectionEvents() {
+  window.addEventListener('online', () => {
+    ui.updateConnectionStatus();
+    ui.showToast('Conexión reanudada (Modo Online)', 'info');
+  });
+
+  window.addEventListener('offline', () => {
+    ui.updateConnectionStatus();
+    ui.showToast('Sin internet: Operando 100% en modo Offline local', 'warning');
+  });
+}
 
 /**
  * Registro de Service Worker

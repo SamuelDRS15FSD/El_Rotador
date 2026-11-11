@@ -230,13 +230,19 @@ export function renderProductList() {
 
     let daysLabel = '';
     if (days < 0) {
-      daysLabel = `Venció hace ${Math.abs(days)}d`;
+      daysLabel = `Venció (${Math.abs(days)}d)`;
     } else if (days === 0) {
-      daysLabel = 'Vence HOY';
+      daysLabel = 'Vence HOY (Retirar)';
     } else if (days === 1) {
-      daysLabel = 'Vence mañana';
+      daysLabel = '1 día (Retirar)';
+    } else if (days === 2) {
+      daysLabel = '2 días (Crítico / Retiro)';
+    } else if (days <= 4) {
+      daysLabel = `${days} días (Urgente)`;
+    } else if (days <= 7) {
+      daysLabel = `${days} días (Pedir Precios)`;
     } else {
-      daysLabel = `${days} días`;
+      daysLabel = `${days} días (Óptimo)`;
     }
 
     const formattedDate = formatDateDisplay(p.expiryDate);
@@ -1031,36 +1037,55 @@ export async function generatePDFReport(options = { share: false }) {
   const allProducts = store.getAllProducts();
   const requests = store.getPriceRequests(todayStr);
 
-  // Filtrar ÚNICAMENTE los productos marcados como precio pedido
-  const requestedItems = [];
+  // Criterio estricto de rotación: Únicamente productos cuya fecha/días restantes sean de 5 a 7 días o menos (≤ 7 días)
+  const productsWith7DaysOrLess = store.getProductsNeedingPrices();
 
-  requests.forEach(req => {
-    if (req.priceRequested) {
-      const product = allProducts.find(p => p.id === req.productId);
-      if (product) {
-        const qtyToOrder = (req.quantity !== undefined && req.quantity !== null && req.quantity !== '')
-          ? Number(req.quantity)
-          : (product.cantidad || 0);
-
-        requestedItems.push({
-          product,
-          request: req,
-          cantidadPedida: qtyToOrder
-        });
-      }
-    }
-  });
-
-  if (requestedItems.length === 0) {
-    showToast('No hay productos con "Precio Pedido" marcado hoy. Marca al menos uno para generar el PDF.', 'warning');
+  if (productsWith7DaysOrLess.length === 0) {
+    showToast('No hay productos con 7 días o menos de vencimiento para generar el reporte.', 'info');
     return;
   }
 
-  // Ordenar productos: por sección y luego por nombre
-  requestedItems.sort((a, b) => {
-    if (a.product.section !== b.product.section) {
-      return a.product.section.localeCompare(b.product.section);
-    }
+  // Filtrar productos: Si hay productos con precio pedido explícito, priorizarlos (que cumplan ≤ 7 días)
+  const markedRequests = requests.filter(r => r.priceRequested);
+  let itemsToReport = [];
+
+  if (markedRequests.length > 0) {
+    markedRequests.forEach(req => {
+      const p = allProducts.find(prod => prod.id === req.productId);
+      if (p) {
+        const days = store.getDaysUntilExpiry(p.expiryDate);
+        if (days <= 7) {
+          itemsToReport.push({
+            product: p,
+            request: req,
+            cantidadPedida: (req.quantity !== undefined && req.quantity !== null && req.quantity !== '')
+              ? Number(req.quantity)
+              : (p.cantidad || 0),
+            days
+          });
+        }
+      }
+    });
+  }
+
+  // Si no se marcó ninguno explícitamente, incluir todos los productos filtrados con ≤ 7 días
+  if (itemsToReport.length === 0) {
+    itemsToReport = productsWith7DaysOrLess.map(p => {
+      const req = requests.find(r => r.productId === p.id);
+      return {
+        product: p,
+        request: req,
+        cantidadPedida: (req && req.quantity !== undefined && req.quantity !== null && req.quantity !== '')
+          ? Number(req.quantity)
+          : (p.cantidad || 0),
+        days: store.getDaysUntilExpiry(p.expiryDate)
+      };
+    });
+  }
+
+  // Ordenar productos: por días restantes (urgentes y de retiro primero) y luego por nombre
+  itemsToReport.sort((a, b) => {
+    if (a.days !== b.days) return a.days - b.days;
     return (a.product.name || '').localeCompare(b.product.name || '');
   });
 
@@ -1084,87 +1109,89 @@ export async function generatePDFReport(options = { share: false }) {
       // Título principal
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(15);
+      doc.setFontSize(14);
       doc.text('ROTADOR - CONTROL DE VENCIMIENTOS', 14, 13);
 
       // Subtítulo en rojo carnicero
-      doc.setFontSize(10);
+      doc.setFontSize(9.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(233, 69, 96); // #e94560
-      doc.text('REPORTE OFICIAL: PRODUCTOS CON PRECIO PEDIDO', 14, 20);
+      doc.text('REPORTE OFICIAL DE PRECIOS Y ROTACIÓN (PRODUCTOS ≤ 7 DÍAS)', 14, 20);
 
       // Metadatos
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(180, 180, 195);
       const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       const dayName = dayNames[today.getDay()];
       const ruleText = settings.mondayHoliday ? 'Corte: Martes (Festivo activado)' : 'Corte: Lunes / Jueves';
-      doc.text(`Fecha: ${dayName}, ${formattedDate}  |  ${ruleText}  |  Total Ítems Pedidos: ${requestedItems.length}`, 14, 27);
+      doc.text(`Fecha: ${dayName}, ${formattedDate}  |  ${ruleText}  |  Total Ítems: ${itemsToReport.length}`, 14, 27);
 
-      // Construir filas de la tabla con los 5 campos exactos solicitados
-      const tableRows = requestedItems.map((item, index) => {
+      // Construir filas de la tabla con las columnas clave requeridas:
+      // PLU, Nombre del Producto, Sección, Existencia, Días Restantes (+ F. Vencimiento y Proveedor)
+      const tableRows = itemsToReport.map((item, index) => {
         const p = item.product;
         const isKg = p.measureType === 'kilogramos' || p.measureType === 'kg';
         const unit = isKg ? 'kg' : 'uds';
 
-        // 1. Nombre del Producto
-        const nombreProducto = p.name || 'Sin nombre';
-
-        // 2. PLU o EAN exclusivo (según aplique, nunca ambos)
         const codeInfo = store.formatCodeInfo(p.plu || p.code);
-        const codigoDisplay = codeInfo.type ? `${codeInfo.type}: ${codeInfo.code}` : 'Sin código';
-
-        // 3. Fecha de Vencimiento
-        const fechaVencimiento = formatDateDisplay(p.expiryDate);
-
-        // 4. Cantidad (ingresada manualmente al pedir)
-        const cantidadPedir = `${item.cantidadPedida} ${unit}`;
-
-        // 5. Proveedor
-        const proveedor = (p.provider || p.proveedor || 'Sin proveedor').trim();
-
-        // Sección (indicador complementario)
+        const pluText = codeInfo.type ? `${codeInfo.type}: ${codeInfo.code}` : 'Sin código';
+        const nombre = p.name || 'Sin nombre';
         const seccion = p.section === 'autoservicio' ? 'Autoservicio' : 'Atendida';
+        const existencia = `${p.cantidad || 0} ${unit}`;
+
+        let diasText = '';
+        if (item.days < 0) diasText = `Vencido (${Math.abs(item.days)}d)`;
+        else if (item.days === 0) diasText = 'Vence HOY (Retirar)';
+        else if (item.days === 1) diasText = '1 día (Retirar)';
+        else if (item.days === 2) diasText = '2 días (Crítico/Retiro)';
+        else if (item.days <= 4) diasText = `${item.days} días (Urgente)`;
+        else diasText = `${item.days} días (Pedir Precios)`;
+
+        const fechaVenc = formatDateDisplay(p.expiryDate);
+        const cantidadPedir = `${item.cantidadPedida} ${unit}`;
+        const proveedor = (p.provider || p.proveedor || 'Sin proveedor').trim();
 
         return [
           index + 1,
-          nombreProducto,
-          codigoDisplay,
-          fechaVencimiento,
-          cantidadPedir,
-          proveedor,
-          seccion
+          pluText,
+          nombre,
+          seccion,
+          existencia,
+          diasText,
+          fechaVenc,
+          proveedor
         ];
       });
 
       // Generar tabla profesional con AutoTable
       doc.autoTable({
         startY: 36,
-        head: [['#', 'Nombre del Producto', 'PLU / EAN', 'F. Vencimiento', 'Cantidad a Pedir', 'Proveedor', 'Sección']],
+        head: [['#', 'PLU / EAN', 'Nombre del Producto', 'Sección', 'Existencia', 'Días Restantes', 'F. Venc.', 'Proveedor']],
         body: tableRows,
         theme: 'striped',
         headStyles: {
           fillColor: [233, 69, 96], // #e94560
           textColor: [255, 255, 255],
           fontStyle: 'bold',
-          fontSize: 8.5,
+          fontSize: 8,
           halign: 'left'
         },
         styles: {
-          fontSize: 8,
-          cellPadding: 2.8,
+          fontSize: 7.5,
+          cellPadding: 2.5,
           valign: 'middle',
           textColor: [40, 40, 40]
         },
         columnStyles: {
           0: { cellWidth: 7, halign: 'center' },
-          1: { fontStyle: 'bold', cellWidth: 46 },
-          2: { cellWidth: 28, font: 'courier', fontStyle: 'bold' },
-          3: { cellWidth: 23, halign: 'center' },
-          4: { cellWidth: 26, fontStyle: 'bold', halign: 'right' },
-          5: { cellWidth: 38 },
-          6: { cellWidth: 22, fontSize: 7.5 }
+          1: { cellWidth: 25, font: 'courier', fontStyle: 'bold' }, // PLU / EAN
+          2: { fontStyle: 'bold', cellWidth: 42 },                 // Nombre
+          3: { cellWidth: 22, fontSize: 7 },                       // Sección
+          4: { cellWidth: 22, fontStyle: 'bold', halign: 'right' }, // Existencia
+          5: { cellWidth: 28, halign: 'center', fontStyle: 'bold' }, // Días Restantes
+          6: { cellWidth: 20, halign: 'center' },                  // F. Venc
+          7: { cellWidth: 24 }                                     // Proveedor
         },
         alternateRowStyles: {
           fillColor: [248, 249, 251]
@@ -1189,7 +1216,7 @@ export async function generatePDFReport(options = { share: false }) {
           if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
             await navigator.share({
               title: 'Reporte de Precios - Rotador',
-              text: `Reporte oficial de productos con precio pedido (${formattedDate})`,
+              text: `Reporte de productos con 7 días o menos (${formattedDate})`,
               files: [pdfFile]
             });
             showToast('Reporte PDF compartido exitosamente', 'success');
@@ -1211,7 +1238,7 @@ export async function generatePDFReport(options = { share: false }) {
   }
 
   // Fallback si jsPDF no estuviese cargado por falta de red
-  printPDFReportFallback(requestedItems, formattedDate);
+  printPDFReportFallback(itemsToReport, formattedDate);
 }
 
 /**
@@ -1238,15 +1265,24 @@ function printPDFReportFallback(requestedItems, formattedDate) {
     const codeInfo = store.formatCodeInfo(p.plu || p.code);
     const codeText = codeInfo.type ? `${codeInfo.type}: ${codeInfo.code}` : 'Sin código';
 
+    let diasText = '';
+    if (item.days < 0) diasText = `Vencido (${Math.abs(item.days)}d)`;
+    else if (item.days === 0) diasText = 'Vence HOY (Retirar)';
+    else if (item.days === 1) diasText = '1 día (Retirar)';
+    else if (item.days === 2) diasText = '2 días (Crítico/Retiro)';
+    else if (item.days <= 4) diasText = `${item.days} días (Urgente)`;
+    else diasText = `${item.days} días (Pedir Precios)`;
+
     return `
       <tr>
         <td style="text-align:center;">${index + 1}</td>
-        <td><strong>${escapeHtml(p.name)}</strong></td>
         <td><code>${escapeHtml(codeText)}</code></td>
-        <td style="text-align:center;">${formatDateDisplay(p.expiryDate)}</td>
-        <td style="text-align:right;"><strong>${item.cantidadPedida} ${unit}</strong></td>
-        <td>${escapeHtml(p.provider || p.proveedor || 'Sin proveedor')}</td>
+        <td><strong>${escapeHtml(p.name)}</strong></td>
         <td>${p.section === 'autoservicio' ? 'Autoservicio' : 'Atendida'}</td>
+        <td style="text-align:right;"><strong>${p.cantidad || 0} ${unit}</strong></td>
+        <td style="text-align:center;">${diasText}</td>
+        <td style="text-align:center;">${formatDateDisplay(p.expiryDate)}</td>
+        <td>${escapeHtml(p.provider || p.proveedor || 'Sin proveedor')}</td>
       </tr>
     `;
   }).join('');
@@ -1255,7 +1291,7 @@ function printPDFReportFallback(requestedItems, formattedDate) {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Reporte de Pedido de Precios - Rotador</title>
+      <title>Reporte de Precios - Rotador</title>
       <style>
         body { font-family: Arial, sans-serif; margin: 20px; color: #222; }
         h1 { color: #1a1a2e; margin-bottom: 2px; }
@@ -1268,18 +1304,19 @@ function printPDFReportFallback(requestedItems, formattedDate) {
     </head>
     <body>
       <h1>🥩 ROTADOR - CONTROL DE VENCIMIENTOS</h1>
-      <h2>REPORTE OFICIAL: PRODUCTOS CON PRECIO PEDIDO (${formattedDate})</h2>
-      <p style="font-size: 12px; color: #666;">Total ítems pedidos: ${requestedItems.length}</p>
+      <h2>REPORTE OFICIAL DE PRECIOS Y ROTACIÓN (PRODUCTOS ≤ 7 DÍAS) (${formattedDate})</h2>
+      <p style="font-size: 12px; color: #666;">Total ítems: ${requestedItems.length}</p>
       <table>
         <thead>
           <tr>
             <th>#</th>
+            <th>PLU / EAN</th>
             <th>Nombre del Producto</th>
-            <th>Código (PLU / EAN)</th>
-            <th>F. Vencimiento</th>
-            <th>Cantidad a Pedir</th>
-            <th>Proveedor</th>
             <th>Sección</th>
+            <th>Existencia</th>
+            <th>Días Restantes</th>
+            <th>F. Vencimiento</th>
+            <th>Proveedor</th>
           </tr>
         </thead>
         <tbody>
@@ -1601,7 +1638,7 @@ export function renderPriorityAlertsList() {
       <div class="text-center py-8 text-text-secondary">
         <div class="text-3xl mb-2">🎉</div>
         <p class="text-xs font-semibold text-white">¡Todo bajo control!</p>
-        <p class="text-[11px] mt-1">No hay productos que venzan en los próximos 3 días.</p>
+        <p class="text-[11px] mt-1">No hay productos que requieran retiro o atención urgente (≤ 4 días).</p>
       </div>
     `;
     return;
@@ -1614,13 +1651,15 @@ export function renderPriorityAlertsList() {
 
     let dayBadge = '';
     if (days < 0) {
-      dayBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-900/60 text-red-200 border border-red-500/40">VENCIDO hace ${Math.abs(days)}d</span>`;
+      dayBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-900/60 text-red-200 border border-red-500/40">VENCIDO (${Math.abs(days)}d)</span>`;
     } else if (days === 0) {
-      dayBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white animate-pulse">VENCE HOY</span>`;
+      dayBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white animate-pulse">VENCE HOY (RETIRAR)</span>`;
     } else if (days === 1) {
-      dayBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-600/90 text-white">1 DÍA</span>`;
+      dayBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-600/90 text-white">1 DÍA (RETIRAR)</span>`;
+    } else if (days === 2) {
+      dayBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-600/90 text-white">2 DÍAS (CRÍTICO)</span>`;
     } else {
-      dayBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-600/90 text-white">${days} DÍAS</span>`;
+      dayBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-600/90 text-white">${days} DÍAS (URGENTE)</span>`;
     }
 
     const sectionBadge = isAuto
@@ -1811,4 +1850,28 @@ export function confirmPDFImport() {
   renderSettings();
 
   showToast(`¡Importación exitosa! Se guardaron ${importedCount} productos`, 'success');
+}
+
+// ============================================================
+// INDICADOR DE ESTADO DE CONEXIÓN (ONLINE / OFFLINE EN TIEMPO REAL)
+// ============================================================
+
+export function updateConnectionStatus() {
+  const statusEl = document.getElementById('connection-status');
+  const dotEl = document.getElementById('connection-dot');
+  const textEl = document.getElementById('connection-text');
+
+  if (!statusEl || !dotEl || !textEl) return;
+
+  if (navigator.onLine) {
+    statusEl.className = 'flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 transition-all';
+    dotEl.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400';
+    textEl.textContent = 'Online';
+    statusEl.title = 'Modo Online (Persistencia local activa)';
+  } else {
+    statusEl.className = 'flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/25 transition-all';
+    dotEl.className = 'w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse';
+    textEl.textContent = 'Offline (Local)';
+    statusEl.title = 'Modo Offline: Operando 100% autónomo en el dispositivo';
+  }
 }

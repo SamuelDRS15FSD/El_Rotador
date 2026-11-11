@@ -401,30 +401,30 @@ export function getDaysUntilExpiry(expiryDate) {
 }
 
 /**
- * Determina el nivel de alerta cromática según los días restantes:
- * - > 6 días: 'ok' (Verde - Óptimo)
- * - 4 a 6 días: 'warning' (Amarillo - Precaución)
- * - 2 a 3 días: 'urgent' (Naranja - Urgente)
- * - ≤ 1 día o vencido: 'critical' (Rojo - Crítico)
+ * Determina el nivel de alerta cromática según la escala oficial ajustada:
+ * - > 7 días: 'ok' (Verde - Óptimo)
+ * - 5 a 7 días: 'warning' (Amarillo - Alerta para pedir precios)
+ * - 3 a 4 días: 'urgent' (Naranja - Urgente)
+ * - ≤ 2 días o vencido: 'critical' (Rojo - Crítico / Retiro: pensado para retirar 1 día antes)
  * @param {number} daysRemaining - Días hasta el vencimiento
  * @returns {'ok'|'warning'|'urgent'|'critical'} Nivel de alerta
  */
 export function getAlertLevel(daysRemaining) {
-  if (daysRemaining <= 1) return 'critical';
-  if (daysRemaining <= 3) return 'urgent';
-  if (daysRemaining <= 6) return 'warning';
-  return 'ok';
+  if (daysRemaining <= 2) return 'critical'; // Rojo (Crítico / Retiro: 2 días o menos / Vencido)
+  if (daysRemaining <= 4) return 'urgent';   // Naranja: 3 a 4 días
+  if (daysRemaining <= 7) return 'warning';  // Amarillo: Entre 5 y 7 días (Alerta para pedir precios)
+  return 'ok';                              // Verde: Más de 7 días
 }
 
 /**
- * Obtiene los productos prioritarios que requieren mayor atención urgente (≤ 3 días o vencidos)
+ * Obtiene los productos prioritarios que requieren mayor atención urgente (≤ 4 días o vencidos)
  * @returns {Array<Object>} Lista de productos críticos y urgentes ordenados por fecha
  */
 export function getPriorityProducts() {
   const products = getAllProducts();
   const urgentItems = products.filter(p => {
     const days = getDaysUntilExpiry(p.expiryDate);
-    return days <= 3; // Críticos (≤1 día/vencidos) y urgentes (2-3 días)
+    return days <= 4; // Críticos (≤2 días/vencidos) y urgentes (3-4 días)
   });
 
   urgentItems.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
@@ -483,7 +483,8 @@ export function updatePriceRequest(id, data) {
 }
 
 /**
- * Obtiene productos que necesitan solicitar precio (≤6 días de vencimiento)
+ * Obtiene productos que necesitan solicitar precio (≤7 días de vencimiento)
+ * Criterio de rotación: Únicamente productos cuya fecha/días restantes sean de 5 a 7 días o menos (≤ 7 días)
  * @param {string} [section] - Sección opcional para filtrar
  * @returns {Array} Productos que necesitan precio
  */
@@ -491,7 +492,8 @@ export function getProductsNeedingPrices(section) {
   let products = section ? getProductsBySection(section) : getAllProducts();
   return products.filter(p => {
     const days = getDaysUntilExpiry(p.expiryDate);
-    return days <= 6;
+    // Filtrado estricto: únicamente productos con 7 días o menos (oculta cualquier producto > 7 días)
+    return days <= 7;
   });
 }
 
@@ -672,11 +674,22 @@ export function loadSimulationScenario() {
       name: '[SIMULACIÓN] Hamburguesas Caseras x4',
       plu: '7793456789012', // EAN
       provider: 'Elaboración Propia',
-      expiryDate: addDays(5), // Precaución (5 días) - Amarillo
+      expiryDate: addDays(6), // Amarillo (5 a 7 días: alerta pedir precios)
       section: 'autoservicio',
       measureType: 'unidades',
       cantidad: 25,
       notes: 'Test unidades',
+      isSimulation: true
+    },
+    {
+      name: '[SIMULACIÓN] Asado de Tira Especial',
+      plu: '4044', // PLU
+      provider: 'Frigorífico Central',
+      expiryDate: addDays(12), // Verde (> 7 días: no requiere pedir precio)
+      section: 'atendida',
+      measureType: 'kilogramos',
+      cantidad: 35.0,
+      notes: 'Test verde óptimo',
       isSimulation: true
     }
   ];
