@@ -100,12 +100,25 @@ function setupNavigationEvents() {
  */
 function setupInventoryEvents() {
   // Botón selector compacto en la barra superior (alterna dinámicamente entre AUT y ATE)
+  // Con soporte para click directo y delegación global para máxima confiabilidad táctil en móviles
   const toggleBtn = document.getElementById('btn-toggle-section') || document.getElementById('active-section-indicator');
   if (toggleBtn) {
-    toggleBtn.addEventListener('click', () => {
+    toggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       ui.toggleSection();
     });
   }
+
+  // Delegación global por si el botón o sus hijos son recreados dinámicamente
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#btn-toggle-section') || e.target.closest('#active-section-indicator');
+    if (btn) {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.toggleSection();
+    }
+  });
 
   // Tabs: Autoservicio (Azul) / Atendida (Ámbar)
   document.querySelectorAll('.inventory-tab').forEach(tab => {
@@ -149,15 +162,26 @@ function setupInventoryEvents() {
     });
   }
 
-  // Delegación de click en tarjetas de producto para editar
+  // Delegación de click en tarjetas de producto para editar o agregar nuevo lote
   const productList = document.getElementById('product-list');
   if (productList) {
     productList.addEventListener('click', (e) => {
+      const newLotBtn = e.target.closest('.btn-quick-new-lot');
+      if (newLotBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = newLotBtn.getAttribute('data-id');
+        if (id) {
+          ui.openAddProductForm(id, 'new-batch');
+        }
+        return;
+      }
+
       const card = e.target.closest('.product-card');
       if (card) {
         const id = card.getAttribute('data-id');
         if (id) {
-          ui.openAddProductForm(id);
+          ui.openAddProductForm(id, 'edit');
         }
       }
     });

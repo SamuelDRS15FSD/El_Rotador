@@ -93,13 +93,13 @@ export function setSection(section) {
   const toggleBtn = document.getElementById('btn-toggle-section') || document.getElementById('active-section-indicator');
   if (toggleBtn) {
     if (section === 'autoservicio') {
-      toggleBtn.innerHTML = `<span>🛒</span><span class="font-extrabold tracking-wider">AUT</span>`;
-      toggleBtn.className = 'text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 hover:bg-blue-500/30 active:scale-95 transition-all flex items-center gap-1 shadow-sm cursor-pointer ml-1';
+      toggleBtn.innerHTML = `<span class="pointer-events-none text-xs">🛒</span><span class="pointer-events-none font-extrabold tracking-wider">AUT</span>`;
+      toggleBtn.className = 'text-[11px] font-extrabold px-3 py-1.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 hover:bg-blue-500/30 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ml-1.5 mr-3 sm:mr-4 flex-shrink-0 select-none';
       toggleBtn.title = 'Sección: Autoservicio (AUT). Toca para cambiar a Atendida (ATE)';
       toggleBtn.setAttribute('aria-label', 'Alternar sección: actualmente Autoservicio (AUT)');
     } else {
-      toggleBtn.innerHTML = `<span>🥩</span><span class="font-extrabold tracking-wider">ATE</span>`;
-      toggleBtn.className = 'text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 active:scale-95 transition-all flex items-center gap-1 shadow-sm cursor-pointer ml-1';
+      toggleBtn.innerHTML = `<span class="pointer-events-none text-xs">🥩</span><span class="pointer-events-none font-extrabold tracking-wider">ATE</span>`;
+      toggleBtn.className = 'text-[11px] font-extrabold px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ml-1.5 mr-3 sm:mr-4 flex-shrink-0 select-none';
       toggleBtn.title = 'Sección: Atendida (ATE). Toca para cambiar a Autoservicio (AUT)';
       toggleBtn.setAttribute('aria-label', 'Alternar sección: actualmente Atendida (ATE)');
     }
@@ -274,6 +274,38 @@ export function renderProductList() {
       codeBadgeHtml = `<span class="font-mono text-xs font-bold text-cyan-300 bg-cyan-950/50 px-2 py-0.5 rounded border border-cyan-500/40">EAN: ${escapeHtml(codeInfo.code)}</span>`;
     }
 
+    // Información de Lotes y Rotación Prioritaria (FIFO)
+    const batchInfo = store.getProductBatchInfo(p);
+    const loteName = p.lote || p.batch || (batchInfo.hasMultipleBatches ? `Lote ${batchInfo.batchIndex}` : 'Lote 1');
+    const loteBadgeHtml = `<span class="font-mono text-xs font-bold text-amber-300 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-500/40" title="Identificador de lote">🏷️ ${escapeHtml(loteName)}</span>`;
+
+    let rotationBanner = '';
+    if (batchInfo.hasMultipleBatches) {
+      if (batchInfo.isNextToExpire) {
+        rotationBanner = `
+          <div class="mt-2.5 py-1 px-2.5 rounded-lg bg-exp-red/15 border border-exp-red/40 flex items-center justify-between gap-1 text-[11px]">
+            <span class="font-extrabold text-exp-red flex items-center gap-1">
+              ⚡ LOTE PRÓXIMO A VENCER (Rotación Prioritaria / FIFO)
+            </span>
+            <span class="text-text-secondary text-[10px] font-semibold bg-surface/80 px-1.5 py-0.5 rounded border border-exp-red/20">
+              Lote ${batchInfo.batchIndex} de ${batchInfo.totalBatches}
+            </span>
+          </div>
+        `;
+      } else {
+        rotationBanner = `
+          <div class="mt-2.5 py-1 px-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-between gap-1 text-[11px]">
+            <span class="font-bold text-blue-300 flex items-center gap-1">
+              📦 Lote posterior (${batchInfo.batchIndex} de ${batchInfo.totalBatches}) • Vence después
+            </span>
+            <span class="text-text-secondary text-[10px] bg-surface/80 px-1.5 py-0.5 rounded">
+              Stock total: ${batchInfo.totalStock} ${unitLabel}
+            </span>
+          </div>
+        `;
+      }
+    }
+
     // Distinción cromática de tarjeta según sección
     const cardBgClass = isAuto
       ? 'bg-[#182338] hover:bg-[#1d2b45] border-accent/30'
@@ -292,9 +324,10 @@ export function renderProductList() {
            data-id="${p.id}">
         <div class="flex justify-between items-start gap-2">
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-1">
+            <div class="flex flex-wrap items-center gap-1.5 mb-1">
               ${sectionBadge}
               ${codeBadgeHtml}
+              ${loteBadgeHtml}
             </div>
             <h3 class="font-bold text-base text-white truncate">${escapeHtml(p.name)}</h3>
             <div class="flex flex-wrap items-center gap-2 mt-1.5">
@@ -310,9 +343,17 @@ export function renderProductList() {
             </span>
           </div>
         </div>
-        <div class="flex justify-between items-center mt-3 pt-2.5 border-t border-accent/20 text-xs text-text-secondary">
-          <span>📅 Vence: <strong class="text-text-primary font-medium">${formattedDate}</strong></span>
-          ${p.notes ? `<span class="italic truncate max-w-[150px] text-text-secondary/70">📝 ${escapeHtml(p.notes)}</span>` : ''}
+        ${rotationBanner}
+        <div class="flex flex-wrap justify-between items-center gap-2 mt-3 pt-2.5 border-t border-accent/20 text-xs text-text-secondary">
+          <div class="flex items-center gap-2 min-w-0">
+            <span>📅 Vence: <strong class="text-text-primary font-medium">${formattedDate}</strong></span>
+            ${p.notes ? `<span class="italic truncate max-w-[120px] text-text-secondary/70">📝 ${escapeHtml(p.notes)}</span>` : ''}
+          </div>
+          <button type="button" class="btn-quick-new-lot text-[11px] font-bold text-purple-300 bg-purple-950/60 hover:bg-purple-900/80 active:scale-95 border border-purple-500/40 rounded px-2.5 py-1 transition-all flex items-center gap-1 cursor-pointer flex-shrink-0"
+            data-id="${p.id}"
+            title="Registrar un nuevo lote con fecha de vencimiento diferente para este producto">
+            ➕ Nuevo Lote
+          </button>
         </div>
       </div>
     `;
@@ -500,8 +541,8 @@ export function updateCodeBadge(code) {
   }
 }
 
-export function openAddProductForm(productId = null) {
-  editingProductId = productId;
+export function openAddProductForm(productId = null, mode = 'edit') {
+  editingProductId = mode === 'new-batch' ? null : productId;
   const form = document.getElementById('product-form');
   const title = document.getElementById('add-product-title');
   const btnDelete = document.getElementById('btn-delete-product');
@@ -512,16 +553,57 @@ export function openAddProductForm(productId = null) {
 
   updateCatalogDatalists();
 
-  if (productId) {
+  if (productId && mode === 'new-batch') {
+    const parentProduct = store.getProduct(productId);
+    if (!parentProduct) return;
+
+    form.reset();
+    if (btnDelete) btnDelete.classList.add('hidden');
+
+    const batchInfo = store.getProductBatchInfo(parentProduct);
+    const nextBatchNum = batchInfo.totalBatches + 1;
+
+    if (title) title.textContent = `Nuevo Lote: ${parentProduct.name}`;
+
+    document.getElementById('product-name').value = parentProduct.name || '';
+    document.getElementById('product-code').value = parentProduct.plu || parentProduct.code || '';
+    document.getElementById('product-provider').value = parentProduct.provider || parentProduct.proveedor || '';
+    document.getElementById('product-section').value = parentProduct.section || currentSection;
+    
+    const loteInput = document.getElementById('product-lote');
+    if (loteInput) loteInput.value = `Lote ${nextBatchNum}`;
+
+    const notesInput = document.getElementById('product-notes');
+    if (notesInput) notesInput.value = '';
+
+    const qtyInput = document.getElementById('product-quantity');
+    if (qtyInput) qtyInput.value = '';
+
+    const dateInput = document.getElementById('product-expiry');
+    if (dateInput) dateInput.value = '';
+
+    const isKg = parentProduct.measureType === 'kilogramos' || parentProduct.measureType === 'kg';
+    const measureRadios = form.querySelectorAll('input[name="measure"]');
+    measureRadios.forEach(radio => {
+      radio.checked = isKg ? radio.value === 'kilogramos' : radio.value === 'unidades';
+    });
+
+    updateQuantityInputRules(parentProduct.measureType);
+    updateCodeBadge(parentProduct.plu || parentProduct.code);
+  } else if (productId) {
     const product = store.getProduct(productId);
     if (!product) return;
 
-    if (title) title.textContent = 'Editar Producto';
+    if (title) title.textContent = 'Editar Producto / Lote';
     if (btnDelete) btnDelete.classList.remove('hidden');
 
     document.getElementById('product-name').value = product.name || '';
     document.getElementById('product-code').value = product.plu || product.code || '';
     document.getElementById('product-provider').value = product.provider || product.proveedor || '';
+    
+    const loteInput = document.getElementById('product-lote');
+    if (loteInput) loteInput.value = product.lote || product.batch || 'Lote 1';
+
     document.getElementById('product-expiry').value = product.expiryDate || '';
     document.getElementById('product-section').value = product.section || currentSection;
     document.getElementById('product-notes').value = product.notes || '';
@@ -546,6 +628,9 @@ export function openAddProductForm(productId = null) {
     const qtyInput = document.getElementById('product-quantity');
     if (qtyInput) qtyInput.value = '';
 
+    const loteInput = document.getElementById('product-lote');
+    if (loteInput) loteInput.value = 'Lote 1';
+
     // Preseleccionar sección actual
     const sectionSelect = document.getElementById('product-section');
     if (sectionSelect) sectionSelect.value = currentSection;
@@ -569,8 +654,10 @@ export function openAddProductForm(productId = null) {
 
   showView('view-add-product');
   setTimeout(() => {
-    const nameInput = document.getElementById('product-name');
-    if (nameInput) nameInput.focus();
+    const focusEl = (productId && mode === 'new-batch')
+      ? document.getElementById('product-expiry')
+      : document.getElementById('product-name');
+    if (focusEl) focusEl.focus();
   }, 100);
 }
 
@@ -578,6 +665,7 @@ export function saveProductFromForm() {
   const name = document.getElementById('product-name').value.trim();
   const plu = document.getElementById('product-code').value.trim();
   const provider = document.getElementById('product-provider').value.trim();
+  const lote = (document.getElementById('product-lote')?.value || '').trim();
   const expiryDate = document.getElementById('product-expiry').value;
   const section = document.getElementById('product-section').value;
   const notes = document.getElementById('product-notes').value.trim();
@@ -629,6 +717,8 @@ export function saveProductFromForm() {
     plu,
     provider,
     proveedor: provider,
+    lote,
+    batch: lote,
     expiryDate,
     section,
     measureType,
@@ -639,10 +729,10 @@ export function saveProductFromForm() {
 
   if (editingProductId) {
     store.updateProduct(editingProductId, productData);
-    showToast('Producto actualizado correctamente', 'success');
+    showToast('Lote de producto actualizado correctamente', 'success');
   } else {
     store.addProduct(productData);
-    showToast('Producto guardado en inventario', 'success');
+    showToast('Lote de producto guardado en inventario', 'success');
   }
 
   // Actualizar datalists del catálogo maestro

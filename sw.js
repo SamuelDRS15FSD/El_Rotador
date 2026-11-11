@@ -1,5 +1,5 @@
 // Service Worker - Rotador PWA
-const CACHE_NAME = 'rotador-v3';
+const CACHE_NAME = 'rotador-v4';
 
 // Archivos a pre-cachear
 const PRECACHE_URLS = [

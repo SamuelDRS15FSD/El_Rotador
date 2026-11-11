@@ -67,7 +67,7 @@ python -m http.server 8000
 | **jsPDF + AutoTable** | Generación de reportes PDF oficiales para impresión y descarga |
 | **Web Share API** | Compartición nativa de archivos PDF y respaldos JSON hacia WhatsApp, Mail, etc. |
 | **ZXing** | Lectura de códigos de barras EAN/UPC desde la cámara |
-| **PWA (Service Worker v3)** | Funcionamiento 100% offline e instalación como app nativa |
+| **PWA (Service Worker v4)** | Funcionamiento 100% offline e instalación como app nativa |
 
 ---
 
@@ -77,7 +77,7 @@ python -m http.server 8000
 El_Rotador/
 ├── index.html                   # Interfaz PWA completa y vistas
 ├── manifest.json                # Manifiesto PWA (Rotador)
-├── sw.js                        # Service Worker (Cache offline rotador-v3)
+├── sw.js                        # Service Worker (Cache offline rotador-v4)
 ├── README.md                    # Guía general del proyecto
 ├── DOC_ALMACENAMIENTO_LOCAL.md  # Especificación técnica del almacenamiento local
 ├── js/

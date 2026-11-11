@@ -53,11 +53,17 @@ Rotador opera bajo un esquema de **persistencia dual completamente local**, sin 
   "quantity": 14.5,
   "provider": "Frigorífico Central",
   "proveedor": "Frigorífico Central",
-  "notes": "Bandeja envasada al vacío - Lote A1",
+  "lote": "Lote 1 (Cámara A)",
+  "batch": "Lote 1 (Cámara A)",
+  "notes": "Bandeja envasada al vacío",
   "isSimulation": false,
   "createdAt": "2026-11-10T20:00:00.000Z"
 }
 ```
+
+*Nota sobre gestión de múltiples lotes por producto:*
+- Un mismo producto (mismo PLU o nombre) puede tener múltiples entradas en la base de datos, cada una con su propio identificador de lote (`lote`), cantidad y fecha de vencimiento individual.
+- La aplicación evalúa las alertas de color de forma independiente por lote y señala automáticamente cuál lote es el próximo a vencer (**FIFO / Rotación Prioritaria**) para garantizar la rotación correcta de inventario en góndola o mostrador.
 
 *Nota sobre diferenciación inteligente de código:*
 - De 1 a 6 dígitos: se clasifica e identifica en la UI como **PLU**.

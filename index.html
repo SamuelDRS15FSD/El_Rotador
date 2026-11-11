@@ -109,23 +109,23 @@
   <!-- TOP HEADER BAR                                                -->
   <!-- ============================================================ -->
   <header id="app-header"
-    class="bg-surface sticky top-0 z-30 px-3.5 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between shadow-lg border-b border-accent/30 gap-2">
+    class="bg-surface sticky top-0 z-30 px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between shadow-lg border-b border-accent/30 gap-4 sm:gap-6">
     <!-- Lado Izquierdo: Logotipo, Título de App y Botón Selector de Sección Compacto (AUT / ATE) -->
-    <div class="flex items-center gap-2 min-w-0">
+    <div class="flex items-center gap-2 min-w-0 mr-auto">
       <span class="text-xl flex-shrink-0">🥩</span>
       <h1 class="text-base font-bold tracking-wide text-white truncate">Rotador</h1>
-      <!-- Botón selector de sección compacto: "AUT" (🛒) / "ATE" (🥩) -->
+      <!-- Botón selector de sección compacto: "AUT" (🛒) / "ATE" (🥩) con margen de seguridad generoso contra toques accidentales -->
       <button id="btn-toggle-section" type="button"
-        class="text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 hover:bg-blue-500/30 active:scale-95 transition-all flex items-center gap-1 shadow-sm cursor-pointer ml-1 flex-shrink-0"
+        class="text-[11px] font-extrabold px-3 py-1.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 hover:bg-blue-500/30 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ml-1.5 mr-3 sm:mr-4 flex-shrink-0 select-none"
         aria-label="Alternar sección: actualmente Autoservicio (AUT)"
         title="Sección: Autoservicio (AUT). Toca para cambiar a Atendida (ATE)">
-        <span>🛒</span>
-        <span class="font-extrabold tracking-wider">AUT</span>
+        <span class="pointer-events-none text-xs">🛒</span>
+        <span class="pointer-events-none font-extrabold tracking-wider">AUT</span>
       </button>
     </div>
 
     <!-- Lado Derecho: Indicador Online/Offline + Fecha + Campana con separación generosa -->
-    <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+    <div class="flex items-center gap-3 sm:gap-4 flex-shrink-0 ml-3 sm:ml-4">
       <!-- Indicador de Conexión en Tiempo Real (Online / Offline nativo) -->
       <div id="connection-status"
         class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 transition-all"
@@ -137,12 +137,12 @@
       <!-- Fecha actual -->
       <span id="header-date" class="text-[11px] text-text-secondary font-medium hidden sm:inline-block"></span>
 
-      <!-- Botón de Notificaciones y Alertas Prioritarias con separación y padding táctil seguro -->
-      <div class="ml-1 sm:ml-2 pl-1 border-l border-accent/20">
+      <!-- Botón de Notificaciones y Alertas Prioritarias con separación táctil protegida (evita toques accidentales) -->
+      <div class="ml-2 sm:ml-3 pl-2 sm:pl-3 border-l border-accent/30">
         <button id="btn-open-alerts"
-          class="relative p-2 rounded-lg bg-surface-light border border-accent/30 hover:border-accent text-white transition-all active:scale-95 flex items-center justify-center min-w-[36px] min-h-[36px]"
+          class="relative p-2 rounded-lg bg-surface-light border border-accent/30 hover:border-accent text-white transition-all active:scale-95 flex items-center justify-center min-w-[40px] min-h-[40px] cursor-pointer"
           aria-label="Ver alertas de vencimiento prioritarias">
-          <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-amber-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
           </svg>
@@ -336,6 +336,23 @@
               <option value="Embutidos Artesanales"></option>
               <option value="Distribuidora La Pradera"></option>
             </datalist>
+          </div>
+
+          <!-- Identificador de Lote (Gestión de Múltiples Vencimientos por Producto) -->
+          <div>
+            <div class="flex justify-between items-center mb-1.5">
+              <label for="product-lote" class="block text-sm font-medium text-text-secondary">
+                Identificador de Lote / Batch
+              </label>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-surface border border-accent/30 text-purple-300">
+                Múltiples fechas por producto
+              </span>
+            </div>
+            <input id="product-lote" type="text" placeholder="Ej: Lote 1, L-A12, Cámara 2"
+              class="w-full bg-surface-light rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/20 font-mono">
+            <p class="text-[11px] text-text-secondary/70 mt-1">
+              Permite registrar y gestionar varias fechas y cantidades independientes para un mismo producto/PLU.
+            </p>
           </div>
 
           <!-- Fecha de Vencimiento -->

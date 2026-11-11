@@ -266,6 +266,22 @@ export function addProduct(product) {
   const rawQuantity = product.cantidad !== undefined ? product.cantidad : (product.quantity !== undefined ? product.quantity : 0);
   const parsedQuantity = Number(rawQuantity) || 0;
   const provider = (product.provider || product.proveedor || '').trim();
+  const rawLote = (product.lote || product.batch || '').trim();
+
+  // Si no se especificó un lote explícito, verificar si ya existen otros lotes del mismo producto
+  let lote = rawLote;
+  if (!lote) {
+    const cleanPlu = (product.plu || product.code || '').trim().toLowerCase();
+    const cleanName = (product.name || '').trim().toLowerCase();
+    const existing = state.products.filter(p => {
+      const pPlu = (p.plu || p.code || '').trim().toLowerCase();
+      const pName = (p.name || '').trim().toLowerCase();
+      if (cleanPlu && pPlu && cleanPlu === pPlu) return true;
+      if (cleanName && pName && cleanName === pName) return true;
+      return false;
+    });
+    lote = existing.length > 0 ? `Lote ${existing.length + 1}` : 'Lote 1';
+  }
 
   const newProduct = {
     id: _generateId(),
@@ -278,6 +294,8 @@ export function addProduct(product) {
     quantity: parsedQuantity,
     provider: provider,
     proveedor: provider,
+    lote: lote,
+    batch: lote,
     notes: (product.notes || '').trim(),
     isSimulation: !!product.isSimulation,
     createdAt: new Date().toISOString()
@@ -339,6 +357,11 @@ export function updateProduct(id, data) {
     updatedData.provider = prov;
     updatedData.proveedor = prov;
   }
+  if (updatedData.lote !== undefined || updatedData.batch !== undefined) {
+    const lotVal = (updatedData.lote || updatedData.batch || '').trim();
+    updatedData.lote = lotVal;
+    updatedData.batch = lotVal;
+  }
 
   state.products[index] = { ...state.products[index], ...updatedData };
   _saveState(state);
@@ -380,6 +403,88 @@ export function deleteProduct(id) {
 export function getProduct(id) {
   const products = getAllProducts();
   return products.find(p => p.id === id) || null;
+}
+
+/**
+ * Obtiene información de agrupación por lotes para un producto determinado.
+ * Permite gestionar múltiples fechas de vencimiento para un mismo producto/PLU
+ * de forma independiente e identificar de forma precisa cuál lote es el
+ * próximo a vencer (Rotación Prioritaria / FIFO: First In, First Out).
+ * 
+ * @param {Object|string} productOrId - Objeto de producto o su ID
+ * @returns {{
+ *   hasMultipleBatches: boolean,
+ *   totalBatches: number,
+ *   batchIndex: number,
+ *   isNextToExpire: boolean,
+ *   earliestExpiryDate: string,
+ *   totalStock: number,
+ *   siblingBatches: Array
+ * }}
+ */
+export function getProductBatchInfo(productOrId) {
+  const defaultInfo = {
+    hasMultipleBatches: false,
+    totalBatches: 1,
+    batchIndex: 1,
+    isNextToExpire: true,
+    earliestExpiryDate: '',
+    totalStock: 0,
+    siblingBatches: []
+  };
+
+  if (!productOrId) return defaultInfo;
+
+  const product = typeof productOrId === 'string' ? getProduct(productOrId) : productOrId;
+  if (!product) return defaultInfo;
+
+  const all = getAllProducts();
+  const prodCode = (product.plu || product.code || '').trim().toLowerCase();
+  const prodName = (product.name || '').trim().toLowerCase();
+
+  const siblings = all.filter(p => {
+    const pCode = (p.plu || p.code || '').trim().toLowerCase();
+    const pName = (p.name || '').trim().toLowerCase();
+    if (prodCode && pCode && prodCode === pCode) return true;
+    if (prodName && pName && prodName === pName) return true;
+    return false;
+  });
+
+  const totalStock = siblings.reduce((sum, s) => sum + (Number(s.cantidad !== undefined ? s.cantidad : s.quantity) || 0), 0);
+
+  if (siblings.length <= 1) {
+    return {
+      hasMultipleBatches: false,
+      totalBatches: 1,
+      batchIndex: 1,
+      isNextToExpire: true,
+      earliestExpiryDate: product.expiryDate || '',
+      totalStock: totalStock,
+      siblingBatches: siblings
+    };
+  }
+
+  // Ordenar cronológicamente por fecha de vencimiento (más antigua primero = primero en vencer / FIFO)
+  // En caso de empate, por orden de registro (createdAt)
+  siblings.sort((a, b) => {
+    const dateA = a.expiryDate || '9999-99-99';
+    const dateB = b.expiryDate || '9999-99-99';
+    if (dateA !== dateB) return dateA.localeCompare(dateB);
+    return (a.createdAt || '').localeCompare(b.createdAt || '');
+  });
+
+  const myIndex = siblings.findIndex(s => s.id === product.id);
+  const isNextToExpire = myIndex === 0;
+
+  return {
+    hasMultipleBatches: true,
+    totalBatches: siblings.length,
+    batchIndex: myIndex !== -1 ? myIndex + 1 : 1,
+    isNextToExpire: isNextToExpire,
+    earliestExpiryDate: siblings[0]?.expiryDate || '',
+    totalStock: totalStock,
+    siblingBatches: siblings
+  };
 }
 
 // ============================================================
@@ -630,17 +735,31 @@ export function loadSimulationScenario() {
       name: '[SIMULACIÓN] Bife de Chorizo Premium',
       plu: '7791234567890', // EAN
       provider: 'Frigorífico Central',
-      expiryDate: addDays(1), // Crítico (1 día) - Rojo
+      lote: 'Lote 1 (Cámara A)',
+      expiryDate: addDays(1), // Crítico (1 día) - Rojo (FIFO: Vender Primero)
       section: 'autoservicio',
       measureType: 'kilogramos',
       cantidad: 14.5,
-      notes: 'Lote de prueba A1',
+      notes: 'Lote de prueba A1 - vence primero',
+      isSimulation: true
+    },
+    {
+      name: '[SIMULACIÓN] Bife de Chorizo Premium',
+      plu: '7791234567890', // Mismo producto y EAN con distinta fecha de vencimiento
+      provider: 'Frigorífico Central',
+      lote: 'Lote 2 (Cámara B)',
+      expiryDate: addDays(10), // Verde (> 7 días) - Lote posterior
+      section: 'autoservicio',
+      measureType: 'kilogramos',
+      cantidad: 28.0,
+      notes: 'Lote posterior recibido hoy',
       isSimulation: true
     },
     {
       name: '[SIMULACIÓN] Pechuga de Pollo Fresca',
       plu: '7792345678901', // EAN
       provider: 'Avícola San Marcos',
+      lote: 'Lote 1',
       expiryDate: addDays(2), // Urgente (2 días) - Naranja
       section: 'autoservicio',
       measureType: 'kilogramos',
@@ -652,6 +771,7 @@ export function loadSimulationScenario() {
       name: '[SIMULACIÓN] Milanesas de Carne Preparadas',
       plu: '4011', // PLU
       provider: 'Elaboración Mostrador',
+      lote: 'Lote Mostrador',
       expiryDate: addDays(0), // Vence HOY - Rojo
       section: 'atendida',
       measureType: 'kilogramos',
@@ -663,6 +783,7 @@ export function loadSimulationScenario() {
       name: '[SIMULACIÓN] Chorizo Bombón Especial',
       plu: '4022', // PLU
       provider: 'Embutidos Artesanales',
+      lote: 'Lote 1',
       expiryDate: addDays(3), // Urgente (3 días) - Naranja
       section: 'atendida',
       measureType: 'kilogramos',
@@ -674,6 +795,7 @@ export function loadSimulationScenario() {
       name: '[SIMULACIÓN] Hamburguesas Caseras x4',
       plu: '7793456789012', // EAN
       provider: 'Elaboración Propia',
+      lote: 'Lote 1',
       expiryDate: addDays(6), // Amarillo (5 a 7 días: alerta pedir precios)
       section: 'autoservicio',
       measureType: 'unidades',
@@ -685,6 +807,7 @@ export function loadSimulationScenario() {
       name: '[SIMULACIÓN] Asado de Tira Especial',
       plu: '4044', // PLU
       provider: 'Frigorífico Central',
+      lote: 'Lote 1',
       expiryDate: addDays(12), // Verde (> 7 días: no requiere pedir precio)
       section: 'atendida',
       measureType: 'kilogramos',
