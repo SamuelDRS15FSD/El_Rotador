@@ -337,11 +337,14 @@ function setupPedirPreciosEvents() {
       }
     });
 
-    // Checkbox de estado pedido
+    // Checkbox de estado pedido y selector de unidad de medida (kg / und)
     pedirList.addEventListener('change', (e) => {
       if (e.target.classList.contains('pedir-checkbox')) {
         const productId = e.target.getAttribute('data-product-id');
         ui.handlePedirStatusChange(productId, e.target.checked);
+      } else if (e.target.classList.contains('pedir-unit-select')) {
+        const productId = e.target.getAttribute('data-product-id');
+        ui.handlePedirUnitChange(productId, e.target.value);
       }
     });
   }

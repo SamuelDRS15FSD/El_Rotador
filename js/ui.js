@@ -936,9 +936,11 @@ export function renderPedirPrecios() {
     };
     const badgeClass = alertBadges[alertLevel] || alertBadges.warning;
 
-    const isKg = p.measureType === 'kilogramos' || p.measureType === 'kg';
-    const unitLabel = isKg ? 'kg' : 'uds';
+    const activeUnit = (req && req.unit) ? req.unit : (p.measureType || 'kilogramos');
+    const isKg = activeUnit === 'kilogramos' || activeUnit === 'kg';
+    const unitLabel = isKg ? 'kg' : 'und';
     const stepVal = isKg ? 'any' : '1';
+    const prodUnit = (p.measureType === 'kilogramos' || p.measureType === 'kg') ? 'kg' : 'und';
     const stockActual = (p.cantidad !== undefined && p.cantidad !== null) ? p.cantidad : (p.quantity || 0);
 
     // Diferenciación inteligente PLU / EAN
@@ -965,7 +967,7 @@ export function renderPedirPrecios() {
             </div>
             <h3 class="font-bold text-sm text-white truncate">${escapeHtml(p.name)}</h3>
             <p class="text-xs text-text-secondary mt-1 flex items-center gap-2">
-              <span>Existencia: <strong class="text-white">${stockActual} ${unitLabel}</strong></span>
+              <span>Existencia: <strong class="text-white">${stockActual} ${prodUnit}</strong></span>
               ${sinPrecioAyer ? '<span class="text-exp-red font-bold">⚠️ Sin precio ayer</span>' : ''}
             </p>
           </div>
@@ -975,8 +977,8 @@ export function renderPedirPrecios() {
         </div>
 
         <div class="flex items-center gap-3 mt-3 pt-3 border-t border-accent/20">
-          <div class="flex items-center gap-1.5 flex-1">
-            <label class="text-xs text-text-secondary font-medium mr-1">Cantidad:</label>
+          <div class="flex items-center gap-1.5 flex-1 min-w-0">
+            <label class="text-xs text-text-secondary font-medium mr-1 flex-shrink-0">Cantidad:</label>
             <input
               type="number"
               step="${stepVal}"
@@ -984,12 +986,20 @@ export function renderPedirPrecios() {
               placeholder="${stockActual}"
               value="${quantity !== undefined && quantity !== null ? quantity : ''}"
               data-product-id="${p.id}"
-              class="pedir-quantity w-24 bg-surface rounded-lg px-3 py-2 text-sm text-white placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/30 font-semibold"
+              class="pedir-quantity w-20 sm:w-24 bg-surface rounded-lg px-2.5 py-2 text-sm text-white placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-action/50 border border-accent/30 font-semibold"
             >
-            <span class="text-xs text-text-secondary font-bold">${unitLabel}</span>
+            <!-- Selector interactivo de unidad de medida (Kilogramos kg vs Unidades und según naturaleza del producto) -->
+            <select
+              data-product-id="${p.id}"
+              class="pedir-unit-select bg-surface rounded-lg px-2 py-2 text-xs font-extrabold text-white border border-accent/40 focus:outline-none focus:ring-2 focus:ring-action/50 cursor-pointer shadow-sm hover:border-accent transition-colors"
+              title="Selecciona la unidad de medida para el pedido: Kilogramos (kg) o Unidades (und)"
+              aria-label="Unidad de medida del pedido">
+              <option value="kilogramos" ${isKg ? 'selected' : ''}>kg</option>
+              <option value="unidades" ${!isKg ? 'selected' : ''}>und</option>
+            </select>
           </div>
 
-          <label class="flex items-center gap-2 cursor-pointer bg-surface/70 px-3.5 py-2 rounded-lg border border-accent/30 active:scale-95 transition-transform">
+          <label class="flex items-center gap-2 cursor-pointer bg-surface/70 px-3.5 py-2 rounded-lg border border-accent/30 active:scale-95 transition-transform flex-shrink-0">
             <input
               type="checkbox"
               data-product-id="${p.id}"
@@ -1009,15 +1019,66 @@ export function renderPedirPrecios() {
   updateAlertBadge();
 }
 
-export function handlePedirQuantityChange(productId, quantityVal) {
+/**
+ * Gestiona el cambio dinámico de la unidad de medida (kg / und) en el módulo de precios
+ * @param {string} productId
+ * @param {string} newUnit
+ */
+export function handlePedirUnitChange(productId, newUnit) {
   const todayStr = new Date().toISOString().split('T')[0];
   const todayRequests = store.getPriceRequests(todayStr);
   const existing = todayRequests.find(r => r.productId === productId);
   const product = store.getProduct(productId);
-  const unit = product ? product.measureType : 'unidades';
+
+  const cleanUnit = (newUnit === 'kilogramos' || newUnit === 'kg') ? 'kilogramos' : 'unidades';
 
   if (existing) {
-    store.updatePriceRequest(existing.id, { quantity: Number(quantityVal) || 0 });
+    store.updatePriceRequest(existing.id, { unit: cleanUnit });
+  } else {
+    store.savePriceRequest({
+      productId,
+      date: todayStr,
+      quantity: 0,
+      unit: cleanUnit,
+      priceRequested: false,
+      priceGiven: false
+    });
+  }
+
+  // Sincronizar también con el producto si corresponde
+  if (product) {
+    store.updateProduct(productId, { measureType: cleanUnit });
+  }
+
+  // Actualizar las reglas del input de cantidad en la tarjeta del producto
+  const card = document.querySelector(`.pedir-card[data-product-id="${productId}"]`);
+  if (card) {
+    const qtyInput = card.querySelector('.pedir-quantity');
+    if (qtyInput) {
+      const isKg = cleanUnit === 'kilogramos';
+      qtyInput.step = isKg ? 'any' : '1';
+      qtyInput.inputMode = isKg ? 'decimal' : 'numeric';
+      if (!isKg && qtyInput.value && qtyInput.value.includes('.')) {
+        qtyInput.value = Math.floor(Number(qtyInput.value));
+        handlePedirQuantityChange(productId, qtyInput.value);
+      }
+    }
+  }
+
+  showToast(cleanUnit === 'kilogramos' ? 'Unidad de pedido: Kilogramos (kg)' : 'Unidad de pedido: Unidades (und)', 'info');
+}
+
+export function handlePedirQuantityChange(productId, quantityVal) {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayRequests = store.getPriceRequests(todayStr);
+  const existing = todayRequests.find(r => r.productId === productId);
+  const card = document.querySelector(`.pedir-card[data-product-id="${productId}"]`);
+  const unitSelect = card?.querySelector('.pedir-unit-select');
+  const product = store.getProduct(productId);
+  const unit = unitSelect ? unitSelect.value : (existing?.unit || product?.measureType || 'kilogramos');
+
+  if (existing) {
+    store.updatePriceRequest(existing.id, { quantity: Number(quantityVal) || 0, unit });
   } else {
     store.savePriceRequest({
       productId,
@@ -1034,11 +1095,13 @@ export function handlePedirStatusChange(productId, isRequested) {
   const todayStr = new Date().toISOString().split('T')[0];
   const todayRequests = store.getPriceRequests(todayStr);
   const existing = todayRequests.find(r => r.productId === productId);
+  const card = document.querySelector(`.pedir-card[data-product-id="${productId}"]`);
+  const unitSelect = card?.querySelector('.pedir-unit-select');
   const product = store.getProduct(productId);
-  const unit = product ? product.measureType : 'unidades';
+  const unit = unitSelect ? unitSelect.value : (existing?.unit || product?.measureType || 'kilogramos');
 
   if (existing) {
-    store.updatePriceRequest(existing.id, { priceRequested: isRequested });
+    store.updatePriceRequest(existing.id, { priceRequested: isRequested, unit });
   } else {
     store.savePriceRequest({
       productId,
@@ -1079,14 +1142,20 @@ export function generateAndShareReport() {
         const req = requests.find(r => r.productId === p.id);
         const stock = (p.cantidad !== undefined && p.cantidad !== null) ? p.cantidad : (p.quantity || '0');
         const qtyToOrder = (req && req.quantity !== undefined && req.quantity !== null && req.quantity !== '') ? req.quantity : stock;
-        const unit = p.measureType === 'kilogramos' || p.measureType === 'kg' ? 'kg' : 'uds';
+        const reqUnit = (req && req.unit)
+          ? (req.unit === 'kilogramos' || req.unit === 'kg' ? 'kg' : 'und')
+          : (p.measureType === 'kilogramos' || p.measureType === 'kg' ? 'kg' : 'und');
+        const prodUnit = (p.measureType === 'kilogramos' || p.measureType === 'kg') ? 'kg' : 'und';
         const status = req && req.priceRequested ? '✅ PEDIDO' : '⏳ PENDIENTE';
 
         const codeInfo = store.formatCodeInfo(p.plu || p.code);
         const codeText = codeInfo.code ? `[${codeInfo.type || 'COD'}: ${codeInfo.code}]` : '';
 
         reportText += `${index + 1}. ${p.name} ${codeText}\n`;
-        reportText += `   Stock: ${stock} ${unit} | A pedir: ${qtyToOrder} ${unit} | Vence en ${days}d -> ${status}\n`;
+        reportText += `   Stock: ${stock} ${prodUnit} | Cantidad a pedir: ${qtyToOrder} ${reqUnit} | Vence en ${days}d -> ${status}\n`;
+        if (p.provider || p.proveedor) {
+          reportText += `   Proveedor: ${p.provider || p.proveedor}\n`;
+        }
       });
       reportText += '\n';
     }
@@ -1236,14 +1305,18 @@ export async function generatePDFReport(options = { share: false }) {
       // PLU, Nombre del Producto, Sección, Existencia, Días Restantes (+ F. Vencimiento y Proveedor)
       const tableRows = itemsToReport.map((item, index) => {
         const p = item.product;
-        const isKg = p.measureType === 'kilogramos' || p.measureType === 'kg';
-        const unit = isKg ? 'kg' : 'uds';
+        const reqUnit = (item.request && item.request.unit)
+          ? (item.request.unit === 'kilogramos' || item.request.unit === 'kg' ? 'kg' : 'und')
+          : (p.measureType === 'kilogramos' || p.measureType === 'kg' ? 'kg' : 'und');
+        const prodUnit = (p.measureType === 'kilogramos' || p.measureType === 'kg') ? 'kg' : 'und';
 
         const codeInfo = store.formatCodeInfo(p.plu || p.code);
         const pluText = codeInfo.type ? `${codeInfo.type}: ${codeInfo.code}` : 'Sin código';
         const nombre = p.name || 'Sin nombre';
         const seccion = p.section === 'autoservicio' ? 'Autoservicio' : 'Atendida';
-        const existencia = `${p.cantidad || 0} ${unit}`;
+        const existencia = (item.request && item.request.quantity)
+          ? `${p.cantidad || 0} ${prodUnit} (Pedir: ${item.cantidadPedida} ${reqUnit})`
+          : `${p.cantidad || 0} ${prodUnit}`;
 
         let diasText = '';
         if (item.days < 0) diasText = `Vencido (${Math.abs(item.days)}d)`;
@@ -1254,7 +1327,6 @@ export async function generatePDFReport(options = { share: false }) {
         else diasText = `${item.days} días (Pedir Precios)`;
 
         const fechaVenc = formatDateDisplay(p.expiryDate);
-        const cantidadPedir = `${item.cantidadPedida} ${unit}`;
         const proveedor = (p.provider || p.proveedor || 'Sin proveedor').trim();
 
         return [
@@ -1365,8 +1437,10 @@ function printPDFReportFallback(requestedItems, formattedDate) {
 
   const rowsHtml = requestedItems.map((item, index) => {
     const p = item.product;
-    const isKg = p.measureType === 'kilogramos' || p.measureType === 'kg';
-    const unit = isKg ? 'kg' : 'uds';
+    const reqUnit = (item.request && item.request.unit)
+      ? (item.request.unit === 'kilogramos' || item.request.unit === 'kg' ? 'kg' : 'und')
+      : (p.measureType === 'kilogramos' || p.measureType === 'kg' ? 'kg' : 'und');
+    const prodUnit = (p.measureType === 'kilogramos' || p.measureType === 'kg') ? 'kg' : 'und';
     const codeInfo = store.formatCodeInfo(p.plu || p.code);
     const codeText = codeInfo.type ? `${codeInfo.type}: ${codeInfo.code}` : 'Sin código';
 
@@ -1378,13 +1452,17 @@ function printPDFReportFallback(requestedItems, formattedDate) {
     else if (item.days <= 4) diasText = `${item.days} días (Urgente)`;
     else diasText = `${item.days} días (Pedir Precios)`;
 
+    const cantDisplay = (item.request && item.request.quantity)
+      ? `${p.cantidad || 0} ${prodUnit} (Pedir: ${item.cantidadPedida} ${reqUnit})`
+      : `${p.cantidad || 0} ${prodUnit}`;
+
     return `
       <tr>
         <td style="text-align:center;">${index + 1}</td>
         <td><code>${escapeHtml(codeText)}</code></td>
         <td><strong>${escapeHtml(p.name)}</strong></td>
         <td>${p.section === 'autoservicio' ? 'Autoservicio' : 'Atendida'}</td>
-        <td style="text-align:right;"><strong>${p.cantidad || 0} ${unit}</strong></td>
+        <td style="text-align:right;"><strong>${cantDisplay}</strong></td>
         <td style="text-align:center;">${diasText}</td>
         <td style="text-align:center;">${formatDateDisplay(p.expiryDate)}</td>
         <td>${escapeHtml(p.provider || p.proveedor || 'Sin proveedor')}</td>
