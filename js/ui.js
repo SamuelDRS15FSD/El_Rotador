@@ -751,6 +751,18 @@ export function renderPedirPrecios() {
     }
   }
 
+  // 1.1 Estado del badge de Modo Simulación
+  const simBadge = document.getElementById('simulation-badge');
+  if (simBadge) {
+    if (store.isSimulationActive()) {
+      simBadge.textContent = '● Simulación Activa';
+      simBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-purple-600 text-white font-bold animate-pulse';
+    } else {
+      simBadge.textContent = 'Pruebas Rápidas';
+      simBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30';
+    }
+  }
+
   // 2. Filtrado de productos para pedir
   const container = document.getElementById('pedir-product-list');
   const emptyState = document.getElementById('pedir-empty');
@@ -1012,7 +1024,7 @@ function copyToClipboard(text) {
  * - Cantidad (ingresada manualmente al pedir)
  * - Proveedor
  */
-export function generatePDFReport() {
+export async function generatePDFReport(options = { share: false }) {
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
   const settings = store.getSettings();
@@ -1168,8 +1180,30 @@ export function generatePDFReport() {
       });
 
       const fileName = `Reporte_Precios_Pedidos_${todayStr}.pdf`;
+
+      if (options && options.share) {
+        try {
+          const pdfBlob = doc.output('blob');
+          const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+          if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+            await navigator.share({
+              title: 'Reporte de Precios - Rotador',
+              text: `Reporte oficial de productos con precio pedido (${formattedDate})`,
+              files: [pdfFile]
+            });
+            showToast('Reporte PDF compartido exitosamente', 'success');
+            return;
+          }
+        } catch (shareErr) {
+          if (shareErr.name === 'AbortError') return; // Cancelado por usuario
+          console.warn('No se pudo compartir archivo directamente:', shareErr);
+        }
+      }
+
+      // Descarga directa del PDF
       doc.save(fileName);
-      showToast('PDF descargado exitosamente', 'success');
+      showToast('PDF generado y descargado exitosamente', 'success');
       return;
     } catch (err) {
       console.error('Error generando jsPDF:', err);
@@ -1178,6 +1212,13 @@ export function generatePDFReport() {
 
   // Fallback si jsPDF no estuviese cargado por falta de red
   printPDFReportFallback(requestedItems, formattedDate);
+}
+
+/**
+ * Comparte el reporte en PDF mediante la Web Share API nativa (WhatsApp, Email, etc.)
+ */
+export async function sharePDFReport() {
+  await generatePDFReport({ share: true });
 }
 
 /**
@@ -1356,6 +1397,81 @@ export function exportBackup() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showToast('Respaldo descargado exitosamente', 'success');
+}
+
+/**
+ * Comparte la base de datos completa mediante Web Share API o descarga directa
+ */
+export async function shareDatabaseBackup() {
+  const data = store.exportData();
+  const dateStr = new Date().toISOString().split('T')[0];
+  const fileName = `rotador-backup-${dateStr}.json`;
+
+  try {
+    const blob = new Blob([data], { type: 'application/json' });
+    const file = new File([blob], fileName, { type: 'application/json' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        title: 'Copia de Seguridad - Rotador',
+        text: `Respaldo de base de datos local de Rotador (${dateStr})`,
+        files: [file]
+      });
+      showToast('Copia de seguridad compartida exitosamente', 'success');
+      return;
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    console.warn('Error al compartir archivo JSON:', err);
+  }
+
+  // Fallback a descarga si el navegador no soporta compartir archivos
+  exportBackup();
+}
+
+/**
+ * Solicita confirmación y vacía por completo el almacenamiento local
+ */
+export async function promptClearAllData() {
+  const confirmed = window.confirm(
+    '¿Estás seguro de que deseas vaciar toda la base de datos?\n\n' +
+    'Se eliminarán todos los productos, solicitudes de precio y catálogos en este dispositivo (IndexedDB y LocalStorage).\n' +
+    'La app iniciará completamente limpia.'
+  );
+
+  if (confirmed) {
+    await store.clearAllData();
+    updateCatalogDatalists();
+    renderProductList();
+    renderPedirPrecios();
+    renderSettings();
+    updateAlertBadge();
+    showToast('Almacenamiento vaciado. La app está 100% limpia.', 'info');
+  }
+}
+
+// ============================================================
+// ACCIONES DE SIMULACIÓN Y TESTING RÁPIDO
+// ============================================================
+
+export function handleRunSimulation() {
+  const created = store.loadSimulationScenario();
+  renderPedirPrecios();
+  renderProductList();
+  updateAlertBadge();
+  showToast(`¡Simulación activada! Se cargaron ${created.length} productos y 4 precios pedidos`, 'success');
+}
+
+export function handleClearSimulation() {
+  const removedCount = store.clearSimulationScenario();
+  renderPedirPrecios();
+  renderProductList();
+  updateAlertBadge();
+  if (removedCount > 0) {
+    showToast(`Simulación finalizada (${removedCount} productos de prueba eliminados)`, 'info');
+  } else {
+    showToast('No había productos de simulación activos', 'info');
+  }
 }
 
 export function importBackupFile(file) {

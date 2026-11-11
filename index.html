@@ -455,6 +455,30 @@
           </label>
         </div>
 
+        <!-- SECCIÓN DE SIMULACIÓN DE PEDIDO DE PRECIOS (TESTING RÁPIDO) -->
+        <div id="simulation-panel" class="bg-gradient-to-r from-purple-950/40 via-surface-light to-blue-950/30 rounded-xl p-4 border border-purple-500/30 shadow-md mb-4">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="text-base">🧪</span>
+              <h3 class="text-xs font-bold text-white uppercase tracking-wider">Modo Simulación (Testing)</h3>
+            </div>
+            <span id="simulation-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30">Pruebas Rápidas</span>
+          </div>
+          <p class="text-[11px] text-text-secondary mb-3 leading-relaxed">
+            Permite probar de forma rápida y visual la función de marcar y solicitar precios, asignar cantidades y generar el reporte PDF sin alterar el inventario real.
+          </p>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btn-run-simulation" type="button"
+              class="py-2.5 px-3 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow flex items-center justify-center gap-1.5 active:scale-95">
+              <span>▶️ Iniciar Simulación</span>
+            </button>
+            <button id="btn-clear-simulation" type="button"
+              class="py-2.5 px-3 rounded-lg bg-surface hover:bg-surface-light text-text-secondary hover:text-white text-xs font-semibold border border-accent/30 transition-all flex items-center justify-center gap-1.5 active:scale-95">
+              <span>🗑️ Limpiar Simulación</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Products to order list -->
         <div id="pedir-product-list" class="space-y-3">
           <!-- Renderizado por JS -->
@@ -471,23 +495,35 @@
         </div>
 
         <!-- Botones de Acción para Reporte y PDF -->
-        <div class="mt-6 space-y-3">
-          <button id="btn-export-pdf"
-            class="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-600 via-action to-rose-600 hover:brightness-110 text-white text-sm font-bold shadow-lg shadow-action/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-red-400/30">
+        <div class="mt-6 space-y-2.5">
+          <!-- Botón Compartir PDF Nativo / WhatsApp -->
+          <button id="btn-share-pdf"
+            class="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:brightness-110 text-white text-sm font-bold shadow-lg shadow-indigo-600/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-blue-400/30">
             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Generar Reporte en PDF (Precios Pedidos)
-          </button>
-
-          <button id="btn-generate-report"
-            class="w-full py-3 rounded-xl bg-surface-light hover:bg-surface text-text-primary text-xs font-semibold border border-accent/30 transition-colors active:scale-[0.98] flex items-center justify-center gap-2">
-            <svg class="w-4 h-4 text-action" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
             </svg>
-            Compartir / Copiar Texto (WhatsApp)
+            Compartir Reporte PDF (Nativo / WhatsApp)
+          </button>
+
+          <!-- Botón Descargar PDF -->
+          <button id="btn-export-pdf"
+            class="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 via-action to-rose-600 hover:brightness-110 text-white text-xs font-bold shadow-md shadow-action/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-red-400/30">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Descargar Reporte en PDF (Precios Pedidos)
+          </button>
+
+          <!-- Botón Copiar Texto Resumen -->
+          <button id="btn-generate-report"
+            class="w-full py-2.5 rounded-xl bg-surface-light hover:bg-surface text-text-secondary hover:text-white text-xs font-semibold border border-accent/30 transition-colors active:scale-[0.98] flex items-center justify-center gap-2">
+            <svg class="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Copiar Resumen en Texto
           </button>
         </div>
       </div>
@@ -554,6 +590,21 @@
         <div class="space-y-4">
           <h3 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Respaldo y Portabilidad</h3>
 
+          <!-- Compartir Base de Datos (Web Share API) -->
+          <button id="btn-share-backup"
+            class="w-full flex items-center gap-4 bg-gradient-to-r from-blue-950/40 to-surface-light rounded-xl p-4 border border-blue-500/30 hover:border-blue-500/50 transition-colors active:scale-[0.98]">
+            <div class="w-10 h-10 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+            </div>
+            <div class="text-left">
+              <p class="text-sm font-semibold text-white">Compartir Base de Datos</p>
+              <p class="text-xs text-text-secondary mt-0.5">Envía el archivo de respaldo por WhatsApp, Correo o Google Drive</p>
+            </div>
+          </button>
+
           <!-- Export -->
           <button id="btn-export-json"
             class="w-full flex items-center gap-4 bg-surface-light rounded-xl p-4 border border-accent/20 hover:border-accent/40 transition-colors active:scale-[0.98]">
@@ -564,8 +615,8 @@
               </svg>
             </div>
             <div class="text-left">
-              <p class="text-sm font-semibold">Exportar datos (JSON)</p>
-              <p class="text-xs text-text-secondary mt-0.5">Descarga copia completa de la base de datos</p>
+              <p class="text-sm font-semibold">Descargar Respaldo (JSON)</p>
+              <p class="text-xs text-text-secondary mt-0.5">Guarda una copia de seguridad en tus archivos locales</p>
             </div>
           </button>
 
@@ -584,19 +635,53 @@
             </div>
           </button>
 
+          <!-- Limpiar Todo / Resetear -->
+          <button id="btn-clear-all-data"
+            class="w-full flex items-center gap-4 bg-red-950/20 hover:bg-red-950/30 rounded-xl p-4 border border-exp-red/30 hover:border-exp-red/50 transition-colors active:scale-[0.98]">
+            <div class="w-10 h-10 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <div class="text-left">
+              <p class="text-sm font-semibold text-red-300">Vaciar / Restablecer Almacenamiento</p>
+              <p class="text-xs text-text-secondary mt-0.5">Elimina todos los productos e inicializa la app 100% limpia</p>
+            </div>
+          </button>
+
           <!-- Hidden file input for import -->
           <input id="import-file-input" type="file" accept=".json,application/json" class="hidden">
         </div>
 
-        <!-- App Info -->
+        <!-- Documentación Técnica de Almacenamiento Local Offline -->
         <div class="mt-8 space-y-4">
+          <h3 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Almacenamiento Local (Técnico)</h3>
+          <div class="bg-surface-light rounded-xl p-4 border border-accent/20 space-y-3">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">💾</span>
+              <p class="text-xs font-bold text-white uppercase tracking-wider">Persistencia Offline en el Dispositivo</p>
+            </div>
+            <div class="text-xs text-text-secondary space-y-2 leading-relaxed">
+              <p><strong class="text-white">Motor Principal:</strong> IndexedDB (<code class="text-purple-300 font-mono">rotador_db_v1</code>)</p>
+              <p><strong class="text-white">Almacenes (Object Stores):</strong> <code class="text-cyan-300 font-mono">products</code>, <code class="text-cyan-300 font-mono">priceRequests</code>, <code class="text-cyan-300 font-mono">masterCatalog</code>, <code class="text-cyan-300 font-mono">settings</code></p>
+              <p><strong class="text-white">Motor de Respaldo Síncrono:</strong> LocalStorage (<code class="text-yellow-300 font-mono">rotadorData</code>)</p>
+              <p><strong class="text-white">Ubicación Física en Android:</strong> <code class="text-[11px] font-mono text-text-secondary">/data/data/com.android.chrome/app_chrome/Default/IndexedDB/</code></p>
+              <p><strong class="text-white">Ubicación Física en iOS:</strong> Sandbox WebKit Mobile Safari (Local Storage Container)</p>
+              <p><strong class="text-white">Modo Offline:</strong> Service Worker PWA activo (<code class="text-emerald-400 font-mono">rotador-v3</code>). Sin necesidad de internet ni servidores externos.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- App Info -->
+        <div class="mt-6 space-y-4">
           <h3 class="text-sm font-semibold text-text-secondary uppercase tracking-wider">Información del Sistema</h3>
           <div class="bg-surface-light rounded-xl p-4 border border-accent/20">
             <div class="flex items-center gap-3 mb-3">
               <span class="text-2xl">🥩</span>
               <div>
                 <p class="text-sm font-bold">Rotador</p>
-                <p id="app-version" class="text-xs text-text-secondary">v2.0.0 (IndexedDB Offline PWA)</p>
+                <p id="app-version" class="text-xs text-text-secondary">v2.1.0 (IndexedDB Offline PWA)</p>
               </div>
             </div>
             <p class="text-xs text-text-secondary leading-relaxed">

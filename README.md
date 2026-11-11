@@ -1,25 +1,28 @@
 # 🏷️ Rotador
 
-**Control de Vencimientos y Gestión de Precios para Carnicería / Supermercado**
+**Control de Vencimientos de Mercancía y Gestión de Precios**
 
-PWA diseñada para el control diario de fechas de vencimiento de productos y la gestión de solicitudes de precios. Pensada para uso en dispositivos móviles con un almacenamiento 100% offline.
+PWA diseñada para el control diario de fechas de vencimiento de productos y la gestión de solicitudes de precios en carnicerías y supermercados. Pensada para uso en dispositivos móviles con arquitectura 100% offline nativa.
 
 ---
 
-## ✨ Características
+## ✨ Características Principales
 
-- 📦 **Gestión de inventario** — Registra productos con nombre, código PLU/EAN, fecha de vencimiento, sección y tipo de medida.
-- 🔴🟠🟡🟢 **Alertas visuales por vencimiento** — Indicadores de color automáticos según los días restantes:
-  - 🟢 Verde: más de 6 días
-  - 🟡 Amarillo: 6 días o menos
-  - 🟠 Naranja: 3 días o menos
-  - 🔴 Rojo: 1 día o menos / vencido
-- 📸 **Escáner de códigos de barras** — Escanea códigos EAN/UPC directamente con la cámara del dispositivo usando ZXing.
-- 💰 **Módulo "Pedir Precios"** — Genera reportes de productos que necesitan nuevo precio según la política de Lunes y Jueves.
-- 🗂️ **Secciones** — Organiza productos en "Autoservicio" y "Atendida".
-- 📲 **PWA instalable** — Funciona offline, se instala en la pantalla de inicio como una app nativa.
-- 💾 **Respaldo y restauración** — Exporta e importa datos en formato JSON.
-- 📱 **Mobile-first** — Interfaz optimizada para uso con una sola mano en móvil.
+- 🧹 **Inicio 100% Limpio (Zero-Seed Policy)** — La aplicación inicia completamente vacía, sin productos de ejemplo ni semillas precargadas.
+- 🧪 **Modo Simulación de Pedido de Precios (Testing)** — Permite cargar un escenario de prueba aislado para testear visualmente la selección de productos, cantidades y la generación/compartición de reportes PDF sin alterar el inventario real.
+- 💾 **Persistencia Local Offline (IndexedDB + LocalStorage)** — Almacenamiento local seguro en el dispositivo que garantiza funcionamiento autónomo sin conexión a internet.
+  - Documentación técnica detallada: consulta [DOC_ALMACENAMIENTO_LOCAL.md](file:///c:/Users/FSD/Documents/fullstack/Web%20Carnes/El_Rotador/DOC_ALMACENAMIENTO_LOCAL.md).
+- 📄 **Carga Masiva mediante PDF** — Extrae automáticamente Nombre, Código PLU/EAN y Proveedor desde listas o facturas PDF con visor interactivo de confirmación.
+- 🔴🟠🟡🟢 **Control Dinámico de Vencimientos por Colores** — Alertas visuales dinámicas actualizadas en tiempo real desde el día del registro:
+  - 🔴 **Rojo:** Vence hoy / Vencido / 1 día restante.
+  - 🟠 **Naranja:** 2 a 3 días restantes (atención urgente).
+  - 🟡 **Amarillo:** 4 a 6 días restantes (precaución).
+  - 🟢 **Verde:** Más de 6 días restantes.
+- 🔔 **Notificaciones y Alertas Prioritarias** — Panel y aviso emergente automático al iniciar con los productos que requieren atención urgente (≤3 días).
+- 🎨 **Diferenciación Visual Cromática** — Separación estricta entre **🛒 Autoservicio (Azul)** y **🥩 Atendida (Ámbar)**.
+- 🔢 **Diferenciación Exclusiva PLU vs EAN** — Detección inteligente de códigos (1 a 6 dígitos: `PLU: [código]`; 7+ dígitos: `EAN: [código]`).
+- 📄 **Reportes PDF Oficiales y Compartición Nativa** — Generación de PDF con productos marcados para precio y botón para compartir vía Web Share API (WhatsApp, Correo, Drive).
+- 📸 **Escáner de Códigos de Barras** — Lectura con la cámara del móvil mediante ZXing.
 
 ---
 
@@ -55,12 +58,15 @@ python -m http.server 8000
 
 | Tecnología | Uso |
 |---|---|
-| **HTML5** | Estructura semántica de la aplicación |
-| **Tailwind CSS** | Framework de utilidades CSS (vía CDN) |
-| **JavaScript ES Modules** | Lógica modular sin bundler |
-| **ZXing** | Lectura de códigos de barras desde la cámara |
-| **PWA** | Service Worker, manifest, instalación offline |
-| **LocalStorage** | Persistencia de datos en el dispositivo |
+| **HTML5 & Vanilla JS** | Estructura semántica y módulos ES sin bundler |
+| **Tailwind CSS** | Framework de utilidades CSS para diseño responsive y dark-mode |
+| **IndexedDB (`rotador_db_v1`)** | Base de datos local transaccional para almacenamiento offline masivo |
+| **LocalStorage (`rotadorData`)** | Caché síncrona en memoria para renderizado instantáneo |
+| **PDF.js (Mozilla)** | Extracción de texto y análisis heurístico de documentos PDF |
+| **jsPDF + AutoTable** | Generación de reportes PDF oficiales para impresión y descarga |
+| **Web Share API** | Compartición nativa de archivos PDF y respaldos JSON hacia WhatsApp, Mail, etc. |
+| **ZXing** | Lectura de códigos de barras EAN/UPC desde la cámara |
+| **PWA (Service Worker v3)** | Funcionamiento 100% offline e instalación como app nativa |
 
 ---
 
@@ -68,17 +74,20 @@ python -m http.server 8000
 
 ```
 El_Rotador/
-├── index.html          # Página principal de la aplicación
-├── manifest.json       # Manifiesto PWA
-├── sw.js               # Service Worker (cache offline)
-├── README.md           # Este archivo
+├── index.html                   # Interfaz PWA completa y vistas
+├── manifest.json                # Manifiesto PWA (Rotador)
+├── sw.js                        # Service Worker (Cache offline rotador-v3)
+├── README.md                    # Guía general del proyecto
+├── DOC_ALMACENAMIENTO_LOCAL.md  # Especificación técnica del almacenamiento local
 ├── js/
-│   ├── app.js          # Punto de entrada, inicialización
-│   ├── store.js        # Gestión de datos y LocalStorage
-│   ├── ui.js           # Renderizado de interfaz
-│   └── scanner.js      # Integración con ZXing para escaneo
+│   ├── app.js                   # Inicialización, orquestación y eventos
+│   ├── store.js                 # Capa de datos, estado y lógica de simulación
+│   ├── db.js                    # Motor nativo IndexedDB (offline-first)
+│   ├── ui.js                    # Renderizado reactivo, modales y reportes PDF
+│   ├── pdf-importer.js          # Extractor y parser de documentos PDF
+│   └── scanner.js               # Integración de escaneo con cámara (ZXing)
 └── icons/
-    └── icon.svg        # Icono de la aplicación
+    └── icon.svg                 # Icono oficial de la aplicación
 ```
 
 ---

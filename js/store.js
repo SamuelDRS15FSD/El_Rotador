@@ -51,8 +51,8 @@ function _loadState() {
 
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (!parsed.masterCatalog || !Array.isArray(parsed.masterCatalog) || parsed.masterCatalog.length === 0) {
-        parsed.masterCatalog = [...DEFAULT_MASTER_CATALOG];
+      if (!parsed.masterCatalog || !Array.isArray(parsed.masterCatalog)) {
+        parsed.masterCatalog = [];
       }
       currentState = parsed;
       return currentState;
@@ -61,11 +61,11 @@ function _loadState() {
     console.error('Error leyendo LocalStorage:', e);
   }
 
-  // Estado inicial por defecto
+  // Estado inicial por defecto: Completamente limpio (0 productos precargados)
   currentState = {
     products: [],
     priceRequests: [],
-    masterCatalog: [...DEFAULT_MASTER_CATALOG],
+    masterCatalog: [],
     settings: { mondayHoliday: false }
   };
   return currentState;
@@ -279,14 +279,15 @@ export function addProduct(product) {
     provider: provider,
     proveedor: provider,
     notes: (product.notes || '').trim(),
+    isSimulation: !!product.isSimulation,
     createdAt: new Date().toISOString()
   };
 
   state.products.push(newProduct);
   _saveState(state);
 
-  // Auto-alimentar el Catálogo Maestro
-  if (newProduct.name) {
+  // Auto-alimentar el Catálogo Maestro (únicamente productos reales, no de simulación)
+  if (newProduct.name && !newProduct.isSimulation) {
     addToMasterCatalog({
       name: newProduct.name,
       code: newProduct.plu,
@@ -594,4 +595,177 @@ export function importData(jsonString) {
     console.error('Error importando datos:', e);
     throw new Error('No se pudieron importar los datos: ' + e.message);
   }
+}
+
+// ============================================================
+// SIMULACIÓN Y TESTING RÁPIDO DE PEDIDO DE PRECIOS
+// ============================================================
+
+/**
+ * Carga un conjunto completo de productos y pedidos simulados para testing
+ * Permite probar de inmediato:
+ * - Selección visual de productos
+ * - Indicadores por colores de cercanía de vencimiento
+ * - Cantidades a pedir pre-cargadas
+ * - Generación y descarga/compartición de reportes en PDF
+ * @returns {Array<Object>} Productos simulados creados
+ */
+export function loadSimulationScenario() {
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+
+  const addDays = (days) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0];
+  };
+
+  // Limpiar cualquier simulación previa para evitar duplicados
+  clearSimulationScenario();
+
+  const simulationProducts = [
+    {
+      name: '[SIMULACIÓN] Bife de Chorizo Premium',
+      plu: '7791234567890', // EAN
+      provider: 'Frigorífico Central',
+      expiryDate: addDays(1), // Crítico (1 día) - Rojo
+      section: 'autoservicio',
+      measureType: 'kilogramos',
+      cantidad: 14.5,
+      notes: 'Lote de prueba A1',
+      isSimulation: true
+    },
+    {
+      name: '[SIMULACIÓN] Pechuga de Pollo Fresca',
+      plu: '7792345678901', // EAN
+      provider: 'Avícola San Marcos',
+      expiryDate: addDays(2), // Urgente (2 días) - Naranja
+      section: 'autoservicio',
+      measureType: 'kilogramos',
+      cantidad: 20.0,
+      notes: 'Lote de prueba San Marcos',
+      isSimulation: true
+    },
+    {
+      name: '[SIMULACIÓN] Milanesas de Carne Preparadas',
+      plu: '4011', // PLU
+      provider: 'Elaboración Mostrador',
+      expiryDate: addDays(0), // Vence HOY - Rojo
+      section: 'atendida',
+      measureType: 'kilogramos',
+      cantidad: 18.5,
+      notes: 'Mostrador atendido test',
+      isSimulation: true
+    },
+    {
+      name: '[SIMULACIÓN] Chorizo Bombón Especial',
+      plu: '4022', // PLU
+      provider: 'Embutidos Artesanales',
+      expiryDate: addDays(3), // Urgente (3 días) - Naranja
+      section: 'atendida',
+      measureType: 'kilogramos',
+      cantidad: 12.0,
+      notes: 'Test embutido',
+      isSimulation: true
+    },
+    {
+      name: '[SIMULACIÓN] Hamburguesas Caseras x4',
+      plu: '7793456789012', // EAN
+      provider: 'Elaboración Propia',
+      expiryDate: addDays(5), // Precaución (5 días) - Amarillo
+      section: 'autoservicio',
+      measureType: 'unidades',
+      cantidad: 25,
+      notes: 'Test unidades',
+      isSimulation: true
+    }
+  ];
+
+  const createdProducts = [];
+  simulationProducts.forEach(pData => {
+    const p = addProduct(pData);
+    createdProducts.push(p);
+  });
+
+  // Marcar automáticamente 4 de ellos con precios pedidos y cantidades ingresadas
+  if (createdProducts.length >= 4) {
+    savePriceRequest({
+      productId: createdProducts[0].id,
+      date: todayStr,
+      quantity: 10.5,
+      unit: 'kilogramos',
+      priceRequested: true
+    });
+    savePriceRequest({
+      productId: createdProducts[1].id,
+      date: todayStr,
+      quantity: 15.0,
+      unit: 'kilogramos',
+      priceRequested: true
+    });
+    savePriceRequest({
+      productId: createdProducts[2].id,
+      date: todayStr,
+      quantity: 18.5,
+      unit: 'kilogramos',
+      priceRequested: true
+    });
+    savePriceRequest({
+      productId: createdProducts[3].id,
+      date: todayStr,
+      quantity: 8.0,
+      unit: 'kilogramos',
+      priceRequested: true
+    });
+  }
+
+  return createdProducts;
+}
+
+/**
+ * Limpia y elimina todos los productos y pedidos de la simulación
+ * @returns {number} Cantidad de productos de simulación eliminados
+ */
+export function clearSimulationScenario() {
+  const state = _loadState();
+  const simProducts = state.products.filter(p => p.isSimulation || (p.name && p.name.startsWith('[SIMULACIÓN]')));
+  const simIds = new Set(simProducts.map(p => p.id));
+
+  state.products = state.products.filter(p => !simIds.has(p.id));
+  state.priceRequests = state.priceRequests.filter(req => !simIds.has(req.productId));
+
+  _saveState(state);
+  return simProducts.length;
+}
+
+/**
+ * Retorna true si hay productos de simulación activos actualmente en memoria o almacenamiento
+ * @returns {boolean}
+ */
+export function isSimulationActive() {
+  const state = _loadState();
+  return state.products.some(p => p.isSimulation || (p.name && p.name.startsWith('[SIMULACIÓN]')));
+}
+
+/**
+ * Elimina totalmente todos los datos del almacenamiento local (IndexedDB + LocalStorage)
+ * Deja la app en estado 100% virgen (0 productos, 0 pedidos, 0 catálogo)
+ */
+export async function clearAllData() {
+  currentState = {
+    products: [],
+    priceRequests: [],
+    masterCatalog: [],
+    settings: { mondayHoliday: false }
+  };
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
+  try {
+    await db.dbSaveProducts([]);
+    await db.dbSavePriceRequests([]);
+    await db.dbSaveMasterCatalog([]);
+  } catch (e) {
+    console.warn('Error limpiando IndexedDB:', e);
+  }
+  _saveState(currentState);
 }

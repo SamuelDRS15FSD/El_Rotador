@@ -17,16 +17,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 3. Registrar Service Worker para PWA offline
   registerServiceWorker();
 
-  // 4. Cargar datos de muestra si es la primera vez que se abre la app
-  initializeSampleData();
-
-  // 5. Cargar datalists del Catálogo Maestro
+  // 4. Cargar datalists del Catálogo Maestro
   ui.updateCatalogDatalists();
 
-  // 6. Actualizar contador de alertas prioritarias en la campana
+  // 5. Actualizar contador de alertas prioritarias en la campana
   ui.updateAlertBadge();
 
-  // 7. Configurar todos los event listeners
+  // 6. Configurar todos los event listeners
   setupNavigationEvents();
   setupInventoryEvents();
   setupProductFormEvents();
@@ -37,11 +34,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupPriorityAlertsEvents();
   setupPDFImportEvents();
 
-  // 8. Mostrar vista inicial (Autoservicio con distinción cromática azul)
+  // 7. Mostrar vista inicial (Autoservicio con distinción cromática azul)
   ui.showView('view-inventory');
   ui.setSection('autoservicio');
 
-  // 9. Sistema de aviso emergente al iniciar si existen productos prioritarios (vencidos o ≤3 días)
+  // 8. Sistema de aviso emergente al iniciar si existen productos prioritarios (vencidos o ≤3 días)
   const priorityProducts = store.getPriorityProducts();
   if (priorityProducts.length > 0) {
     setTimeout(() => {
@@ -64,111 +61,6 @@ function registerServiceWorker() {
           console.warn('Fallo en registro de Service Worker:', err);
         });
     });
-  }
-}
-
-/**
- * Inserta datos de muestra si el inventario está completamente vacío,
- * permitiendo al usuario probar la app de inmediato con cantidades numéricas y códigos PLU/EAN.
- */
-function initializeSampleData() {
-  const existing = store.getAllProducts();
-  if (existing.length === 0) {
-    const today = new Date();
-    
-    // Función auxiliar para sumar días
-    const addDays = (days) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() + days);
-      return d.toISOString().split('T')[0];
-    };
-
-    const sampleProducts = [
-      // AUTOSERVICIO (Azul)
-      {
-        name: 'Bife de Chorizo Premium',
-        plu: '7791234567890', // EAN (13 dígitos)
-        provider: 'Frigorífico Central',
-        expiryDate: addDays(1), // Crítico (1 día)
-        section: 'autoservicio',
-        measureType: 'kilogramos',
-        cantidad: 14.5,
-        notes: 'Bandeja envasada al vacío - Lote A1'
-      },
-      {
-        name: 'Pechuga de Pollo Fresca',
-        plu: '7792345678901', // EAN (13 dígitos)
-        provider: 'Avícola San Marcos',
-        expiryDate: addDays(3), // Urgente (3 días)
-        section: 'autoservicio',
-        measureType: 'kilogramos',
-        cantidad: 22.0,
-        notes: 'Proveedor Avícola Central'
-      },
-      {
-        name: 'Hamburguesas Caseras x4',
-        plu: '7793456789012', // EAN (13 dígitos)
-        provider: 'Elaboración Propia',
-        expiryDate: addDays(5), // Precaución (5 días)
-        section: 'autoservicio',
-        measureType: 'unidades',
-        cantidad: 30, // Entero
-        notes: 'Elaboración del lunes'
-      },
-      {
-        name: 'Colita de Cuadril Envasada',
-        plu: '7794567890123', // EAN (13 dígitos)
-        provider: 'Frigorífico Pampeano',
-        expiryDate: addDays(10), // OK (>6 días)
-        section: 'autoservicio',
-        measureType: 'kilogramos',
-        cantidad: 8.75,
-        notes: 'Lote B14'
-      },
-      // ATENDIDA (Ámbar)
-      {
-        name: 'Milanesas de Carne Preparadas',
-        plu: '4011', // PLU (4 dígitos)
-        provider: 'Elaboración Mostrador',
-        expiryDate: addDays(0), // Vence HOY (Crítico)
-        section: 'atendida',
-        measureType: 'kilogramos',
-        cantidad: 18.5,
-        notes: 'Mostrador principal'
-      },
-      {
-        name: 'Chorizo Bombón Especial',
-        plu: '4022', // PLU (4 dígitos)
-        provider: 'Embutidos Artesanales',
-        expiryDate: addDays(2), // Urgente (2 días)
-        section: 'atendida',
-        measureType: 'kilogramos',
-        cantidad: 12.0,
-        notes: 'Lote embutido artesanal'
-      },
-      {
-        name: 'Matambre de Cerdo',
-        plu: '4033', // PLU (4 dígitos)
-        provider: 'Cabaña Porcina',
-        expiryDate: addDays(6), // Precaución (6 días)
-        section: 'atendida',
-        measureType: 'kilogramos',
-        cantidad: 9.3,
-        notes: 'Cámara 2'
-      },
-      {
-        name: 'Asado de Tira Especial',
-        plu: '4044', // PLU (4 dígitos)
-        provider: 'Frigorífico Central',
-        expiryDate: addDays(14), // OK (>6 días)
-        section: 'atendida',
-        measureType: 'kilogramos',
-        cantidad: 35.0,
-        notes: 'Media res fresca'
-      }
-    ];
-
-    sampleProducts.forEach(p => store.addProduct(p));
   }
 }
 
@@ -369,6 +261,22 @@ function setupPedirPreciosEvents() {
     });
   }
 
+  // Botones de Modo Simulación (Testing)
+  const btnRunSim = document.getElementById('btn-run-simulation');
+  const btnClearSim = document.getElementById('btn-clear-simulation');
+
+  if (btnRunSim) {
+    btnRunSim.addEventListener('click', () => {
+      ui.handleRunSimulation();
+    });
+  }
+
+  if (btnClearSim) {
+    btnClearSim.addEventListener('click', () => {
+      ui.handleClearSimulation();
+    });
+  }
+
   // Delegación de inputs de cantidad y checkboxes de pedido
   const pedirList = document.getElementById('pedir-product-list');
   if (pedirList) {
@@ -389,7 +297,15 @@ function setupPedirPreciosEvents() {
     });
   }
 
-  // Botón generar reporte en PDF (únicamente productos con precio pedido)
+  // Botón compartir reporte en PDF (Web Share API nativa o WhatsApp)
+  const btnSharePdf = document.getElementById('btn-share-pdf');
+  if (btnSharePdf) {
+    btnSharePdf.addEventListener('click', () => {
+      ui.sharePDFReport();
+    });
+  }
+
+  // Botón generar / descargar reporte en PDF
   const btnExportPdf = document.getElementById('btn-export-pdf');
   if (btnExportPdf) {
     btnExportPdf.addEventListener('click', () => {
@@ -397,7 +313,7 @@ function setupPedirPreciosEvents() {
     });
   }
 
-  // Botón generar / compartir reporte
+  // Botón copiar resumen de texto
   const btnReport = document.getElementById('btn-generate-report');
   if (btnReport) {
     btnReport.addEventListener('click', () => {
@@ -410,7 +326,15 @@ function setupPedirPreciosEvents() {
  * Eventos de la vista de configuración y respaldo
  */
 function setupSettingsEvents() {
-  // Exportar JSON
+  // Compartir Base de Datos mediante Web Share API
+  const btnShareBackup = document.getElementById('btn-share-backup');
+  if (btnShareBackup) {
+    btnShareBackup.addEventListener('click', () => {
+      ui.shareDatabaseBackup();
+    });
+  }
+
+  // Exportar / Descargar JSON
   const btnExport = document.getElementById('btn-export-json');
   if (btnExport) {
     btnExport.addEventListener('click', () => {
@@ -432,6 +356,14 @@ function setupSettingsEvents() {
         ui.importBackupFile(e.target.files[0]);
         fileInput.value = '';
       }
+    });
+  }
+
+  // Vaciar y restablecer toda la base de datos (iniciar 100% limpia)
+  const btnClearAll = document.getElementById('btn-clear-all-data');
+  if (btnClearAll) {
+    btnClearAll.addEventListener('click', () => {
+      ui.promptClearAllData();
     });
   }
 }
